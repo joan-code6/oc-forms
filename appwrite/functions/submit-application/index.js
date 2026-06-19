@@ -72,7 +72,7 @@ module.exports = async function (context) {
     const existing = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_ID,
-      [`equal("userId", "${userId}")`]
+      [`equal("userID", "${userId}")`]
     );
 
     if (existing.total > 0) {
@@ -94,7 +94,7 @@ module.exports = async function (context) {
       COLLECTION_ID,
       "unique()",
       {
-        userId,
+        userID,
         discordUsername,
         discordEmail,
         minecraftIGN: ign,
