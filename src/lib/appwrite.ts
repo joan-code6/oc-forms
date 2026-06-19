@@ -6,7 +6,7 @@ const PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID || ""
 let client: Client
 let account: Account
 
-function getClient(): Client {
+export function getClient(): Client {
   if (!client) {
     client = new Client()
     client.setEndpoint(ENDPOINT).setProject(PROJECT_ID)
