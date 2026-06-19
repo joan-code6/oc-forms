@@ -1,4 +1,4 @@
-const { Client, Databases, Users } = require("node-appwrite");
+const { Client, Databases, Users, Query } = require("node-appwrite");
 
 const ENDPOINT    = process.env.APPWRITE_ENDPOINT;
 const PROJECT_ID  = process.env.APPWRITE_PROJECT_ID;
@@ -72,7 +72,7 @@ module.exports = async function (context) {
     const existing = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_ID,
-      [`equal("userID", "${userId}")`]
+      [Query.equal("userID", userId)]
     );
 
     if (existing.total > 0) {
@@ -94,7 +94,7 @@ module.exports = async function (context) {
       COLLECTION_ID,
       "unique()",
       {
-        userID,
+        userID: userId,
         discordUsername,
         discordEmail,
         minecraftIGN: ign,
