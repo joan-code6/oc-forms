@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query"
 import { Functions } from "appwrite"
-import { getClient } from "@/lib/appwrite"
+import { getClient, getAccount } from "@/lib/appwrite"
 
 const FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_SUBMIT_ID || "6a3573730031e3cd7861"
@@ -22,11 +22,15 @@ interface SubmitResult {
 export function useSubmitApplication() {
   return useMutation({
     mutationFn: async (payload: SubmitPayload): Promise<SubmitResult> => {
+      const session = await getAccount().getSession("current")
       const functions = new Functions(getClient())
-      const res = await functions.createExecution(
-        FUNCTION_ID,
-        JSON.stringify(payload)
-      )
+      const res = await functions.createExecution({
+        functionId: FUNCTION_ID,
+        body: JSON.stringify(payload),
+        headers: {
+          "X-Appwrite-Session": session.$id,
+        },
+      })
 
       if (!res.responseBody) {
         return { success: false, error: "No response from server." }
