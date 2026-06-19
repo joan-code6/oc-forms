@@ -8,7 +8,7 @@ const client = new Client()
 const functions = new Functions(client)
 
 const FUNCTION_ID =
-  import.meta.env.VITE_APPWRITE_FUNCTION_SUBMIT_ID || "submit-application"
+  import.meta.env.VITE_APPWRITE_FUNCTION_SUBMIT_ID || "6a3573730031e3cd7861"
 
 interface SubmitPayload {
   minecraftIGN: string
