@@ -1,0 +1,10 @@
+{
+  "name": "submit-application",
+  "version": "1.0.0",
+  "description": "Receives a Minecraft event application, verifies the user is authenticated, validates the data, and writes it to the database.",
+  "type": "module",
+  "main": "src/main.js",
+  "dependencies": {
+    "appwrite": "^18.0.0"
+  }
+}
