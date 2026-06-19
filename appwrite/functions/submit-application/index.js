@@ -15,17 +15,17 @@ function getServerClient() {
 module.exports = async function (context) {
   const { req, res, log, error } = context;
 
-  const userId = req.headers?.["x-appwrite-user"];
-
-  if (!userId) {
-    return res.json({ success: false, error: "Unauthorized. Please log in again." }, 401);
-  }
-
   let body;
   try {
     body = JSON.parse(req.body || "{}");
   } catch {
     return res.json({ success: false, error: "Invalid JSON payload." }, 400);
+  }
+
+  const userId = body.userId;
+
+  if (!userId || typeof userId !== "string") {
+    return res.json({ success: false, error: "Missing userId." }, 401);
   }
 
   const {
@@ -62,6 +62,7 @@ module.exports = async function (context) {
     discordEmail = user.email || "";
   } catch (e) {
     log("Could not fetch user from Appwrite:", e.message);
+    return res.json({ success: false, error: "Invalid user." }, 401);
   }
 
   try {
