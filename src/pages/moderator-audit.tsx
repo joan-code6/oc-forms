@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ArrowLeft, AlertTriangle, ShieldCheck, Search, Pencil, User } from "lucide-react"
+import { ArrowLeft, AlertTriangle, ShieldCheck, Search, Pencil, User, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 
 const REVIEWS_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_REVIEWS_ID || "get-mod-reviews"
@@ -53,6 +53,9 @@ export function ModeratorAuditPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [reviewerFilter, setReviewerFilter] = useState("all")
+  const [zoneFilter, setZoneFilter] = useState("all")
+  const [sortBy, setSortBy] = useState<"date" | "rating">("date")
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
 
   useEffect(() => {
     if (!allowed) return
@@ -77,7 +80,7 @@ export function ModeratorAuditPage() {
 
   const filteredReviews = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return reviews.filter((review) => {
+    const filtered = reviews.filter((review) => {
       const app = review.application
       const matchesSearch =
         !query ||
@@ -87,9 +90,38 @@ export function ModeratorAuditPage() {
         review.applicationId.toLowerCase().includes(query)
       const matchesReviewer =
         reviewerFilter === "all" || review.moderatorDiscordUsername === reviewerFilter
-      return matchesSearch && matchesReviewer
+      const matchesZone =
+        zoneFilter === "all" || review.ratingZone === zoneFilter
+      return matchesSearch && matchesReviewer && matchesZone
     })
-  }, [reviews, search, reviewerFilter])
+
+    filtered.sort((a, b) => {
+      if (sortBy === "rating") {
+        return sortDir === "asc" ? a.rating - b.rating : b.rating - a.rating
+      }
+      const dateA = new Date(a.reviewedAt).getTime()
+      const dateB = new Date(b.reviewedAt).getTime()
+      return sortDir === "asc" ? dateA - dateB : dateB - dateA
+    })
+
+    return filtered
+  }, [reviews, search, reviewerFilter, zoneFilter, sortBy, sortDir])
+
+  const toggleSort = (field: "date" | "rating") => {
+    if (sortBy === field) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"))
+    } else {
+      setSortBy(field)
+      setSortDir("desc")
+    }
+  }
+
+  const renderSortIcon = (field: "date" | "rating") => {
+    if (sortBy !== field) return <ArrowUpDown className="h-3.5 w-3.5 text-white/30" />
+    return sortDir === "asc"
+      ? <ArrowUp className="h-3.5 w-3.5 text-brand" />
+      : <ArrowDown className="h-3.5 w-3.5 text-brand" />
+  }
 
   if (accessLoading || !allowed) return null
 
@@ -135,6 +167,58 @@ export function ModeratorAuditPage() {
               ))}
           </SelectContent>
         </Select>
+        <Select value={zoneFilter} onValueChange={setZoneFilter}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Filter by zone" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All zones</SelectItem>
+            <SelectItem value="green">
+              <span className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#22c55e]" />
+                Green (76-100%)
+              </span>
+            </SelectItem>
+            <SelectItem value="yellow">
+              <span className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#eab308]" />
+                Yellow (51-75%)
+              </span>
+            </SelectItem>
+            <SelectItem value="orange">
+              <span className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#f97316]" />
+                Orange (26-50%)
+              </span>
+            </SelectItem>
+            <SelectItem value="red">
+              <span className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" />
+                Red (0-25%)
+              </span>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => toggleSort("date")}
+            className="gap-1.5"
+          >
+            {renderSortIcon("date")}
+            Date
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => toggleSort("rating")}
+            className="gap-1.5"
+          >
+            {renderSortIcon("rating")}
+            Rating
+          </Button>
+        </div>
       </div>
 
       {loading ? (
