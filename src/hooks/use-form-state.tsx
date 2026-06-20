@@ -118,9 +118,17 @@ export function FormProvider({ children }: { children: ReactNode }) {
       errors.push("Minecraft username can only contain letters, numbers, and underscores.")
     }
 
+    const requiredYesIds = ["q3", "q4"]
+    for (const id of requiredYesIds) {
+      if (state.yesNoAnswers[id] !== true) {
+        errors.push("You must answer Yes to all acknowledgment questions.")
+        break
+      }
+    }
+
     dispatch({ type: "SET_ERRORS", errors })
     return errors.length === 0
-  }, [state.minecraftIGN])
+  }, [state.minecraftIGN, state.yesNoAnswers])
 
   return (
     <FormContext.Provider value={{ state, dispatch, validate }}>

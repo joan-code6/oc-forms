@@ -114,11 +114,13 @@ function FormContent() {
 
     dispatch({ type: "SET_SUBMITTING", value: true })
 
+    const { q3: _, q4: __, ...backendYesNoAnswers } = state.yesNoAnswers
+
     submitMutation.mutate(
       {
         minecraftIGN: state.minecraftIGN.trim(),
         timezone: state.timezone,
-        yesNoAnswers: state.yesNoAnswers,
+        yesNoAnswers: backendYesNoAnswers,
         textAnswers: state.textAnswers,
         dropdownAnswers: state.dropdownAnswers,
       },

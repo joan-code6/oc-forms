@@ -40,6 +40,18 @@ export const yesNoQuestions: YesNoQuestion[] = [
     text: "Do you have a clipping software?",
     order: 2,
   },
+  {
+    id: "q3",
+    type: "yesno",
+    text: "Do you acknowledge that you must be in the discord server to be accepted?",
+    order: 3,
+  },
+  {
+    id: "q4",
+    type: "yesno",
+    text: "Have you read the event rules and understand the penalties of breaking this rule may result in bans from all future events?",
+    order: 4,
+  },
 ]
 
 export const dropdownQuestions: DropdownQuestion[] = [
