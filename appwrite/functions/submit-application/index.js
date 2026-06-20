@@ -81,12 +81,14 @@ module.exports = async function (context) {
     discordUsername = user.name || "";
     discordEmail = user.email || "";
 
-    const identities = user.identities || [];
-    const discordIdentity = identities.find(
-      (id) => id.provider === "discord" || id.providerEmail?.includes("discord")
+    const { identities: identityList } = await users.listIdentities([
+      Query.equal("userId", userId)
+    ]);
+    const discordIdentity = identityList.find(
+      (id) => id.provider === "discord"
     );
     if (discordIdentity) {
-      discordId = discordIdentity.identityId || discordIdentity.id || "";
+      discordId = discordIdentity.providerUid || "";
     }
   } catch (e) {
     log("Could not fetch user from Appwrite:", e.message);

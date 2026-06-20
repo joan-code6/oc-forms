@@ -20,16 +20,17 @@ async function verifyStaffRole(userId) {
   try {
     const client = getServerClient();
     const users = new Users(client);
-    const user = await users.get(userId);
+    const { identities: identityList } = await users.listIdentities([
+      Query.equal("userId", userId)
+    ]);
 
-    const identities = user.identities || [];
-    const discordIdentity = identities.find(
-      (id) => id.provider === "discord" || id.providerEmail?.includes("discord")
+    const discordIdentity = identityList.find(
+      (id) => id.provider === "discord"
     );
 
     if (!discordIdentity) return { isStaff: false };
 
-    const discordId = discordIdentity.identityId || discordIdentity.id;
+    const discordId = discordIdentity.providerUid;
     if (!discordId) return { isStaff: false };
 
     const res = await fetch(

@@ -1,4 +1,4 @@
-const { Client, Users } = require("node-appwrite");
+const { Client, Users, Query } = require("node-appwrite");
 
 const ENDPOINT          = process.env.APPWRITE_ENDPOINT;
 const PROJECT_ID        = process.env.APPWRITE_PROJECT_ID;
@@ -35,16 +35,13 @@ async function verifyStaffRole(userId, log) {
   try {
     const client = getServerClient();
     const users = new Users(client);
-    const user = await users.get(userId);
+    const { identities: identityList } = await users.listIdentities([
+      Query.equal("userId", userId)
+    ]);
+    log("identityList count:", identityList?.length ?? 0);
 
-    log("User identities count:", (user.identities || []).length);
-    for (const id of (user.identities || [])) {
-      log("Identity:", JSON.stringify({ provider: id.provider, id: id.$id, identityId: id.identityId }));
-    }
-
-    const identities = user.identities || [];
-    const discordIdentity = identities.find(
-      (id) => id.provider === "discord" || id.providerEmail?.includes("discord")
+    const discordIdentity = identityList.find(
+      (id) => id.provider === "discord"
     );
 
     if (!discordIdentity) {
@@ -52,7 +49,7 @@ async function verifyStaffRole(userId, log) {
       return { isStaff: false };
     }
 
-    const discordId = discordIdentity.identityId || discordIdentity.id;
+    const discordId = discordIdentity.providerUid;
     log("Discord ID:", discordId);
     if (!discordId) return { isStaff: false };
 
@@ -78,11 +75,7 @@ async function verifyStaffRole(userId, log) {
 module.exports = async function (context) {
   const { req, res, log, error } = context;
 
-  log("Request headers:", JSON.stringify(Object.keys(req.headers || {})));
-  log("x-appwrite-user:", req.headers?.["x-appwrite-user"] || "(missing)");
-  log("x-appwrite-jwt:", req.headers?.["x-appwrite-jwt"] ? "(present)" : "(missing)");
-  log("x-fallback-cookies:", req.headers?.["x-fallback-cookies"] ? "(present)" : "(missing)");
-  log("cookie:", req.headers?.["cookie"] ? "(present)" : "(missing)");
+
 
   const userId = req.headers?.["x-appwrite-user-id"];
 
