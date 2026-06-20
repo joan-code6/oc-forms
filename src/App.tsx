@@ -24,7 +24,7 @@ export default function App() {
 
           <footer className="border-t border-white/5 py-6 text-center">
             <p className="text-xs text-white/20">
-              OutCraft Event Server &copy; {new Date().getFullYear()}
+              OutCraft &copy; {new Date().getFullYear()}
             </p>
           </footer>
         </div>

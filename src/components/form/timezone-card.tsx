@@ -1,3 +1,4 @@
+import { Check } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -47,7 +48,10 @@ export function TimezoneCard() {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h2 className="text-xl font-bold tracking-tight">What is your timezone?</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-bold tracking-tight">What is your timezone?</h2>
+          <Check className="h-4 w-4 shrink-0 text-green-400" />
+        </div>
         <p className="text-sm text-white/50">
           We've automatically selected your local timezone. You can change it if needed.
         </p>

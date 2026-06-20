@@ -69,15 +69,28 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
-    const existing = await databases.listDocuments(
+    const existingByUser = await databases.listDocuments(
       DATABASE_ID,
       COLLECTION_ID,
       [Query.equal("userID", userId)]
     );
 
-    if (existing.total > 0) {
+    if (existingByUser.total > 0) {
       return res.json(
         { success: false, error: "You have already submitted an application." },
+        409
+      );
+    }
+
+    const existingByIGN = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_ID,
+      [Query.equal("minecraftIGN", ign)]
+    );
+
+    if (existingByIGN.total > 0) {
+      return res.json(
+        { success: false, error: "This Minecraft username has already been used in an application." },
         409
       );
     }

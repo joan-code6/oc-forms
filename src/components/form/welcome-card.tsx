@@ -13,11 +13,12 @@ interface WelcomeCardProps {
 export function WelcomeCard({ user, loading, error, onLogin }: WelcomeCardProps) {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-center justify-center gap-3 text-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-brand/10 text-3xl font-bold text-brand ring-1 ring-brand/20">
-          O
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight">OutCraft</h1>
+      <div className="flex flex-col items-center justify-center text-center">
+        <img
+          src="https://folder.outcraft.net/Outcraft-logo.png"
+          alt="OutCraft Logo"
+          className="w-48 object-contain sm:w-56"
+        />
       </div>
 
       <Separator />
@@ -36,7 +37,7 @@ export function WelcomeCard({ user, loading, error, onLogin }: WelcomeCardProps)
       )}
 
       {!user && !loading && (
-        <Button onClick={onLogin} size="lg" className="w-full gap-3">
+        <Button onClick={onLogin} size="lg" className="w-full gap-3 transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]">
           <DiscordIcon />
           Verify with Discord
         </Button>

@@ -43,20 +43,20 @@ export function AvatarCard({ minecraftUsername, onValidationChange }: AvatarCard
 
       <div className="flex flex-col items-center justify-center gap-5 rounded-xl border border-white/10 bg-white/[0.02] p-8">
         {isLoading ? (
-          <div className="flex h-56 w-40 items-center justify-center">
+          <div className="flex h-48 w-full items-center justify-center sm:h-56 sm:w-40">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
           </div>
         ) : showPlaceholder ? (
-          <div className="flex h-56 w-40 items-center justify-center rounded-2xl bg-gradient-to-br from-brand/10 to-transparent">
+          <div className="flex h-48 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-brand/10 to-transparent sm:h-56 sm:w-40">
             <span className="text-4xl font-bold text-brand/30">?</span>
           </div>
         ) : (
-          <div className="flex items-end gap-6">
+          <div className="flex items-end gap-4 sm:gap-6">
             {!headFailed && (
               <img
                 src={headUrl!}
                 alt={`Minecraft skin head for ${minecraftUsername}`}
-                className="h-24 w-24"
+                className="h-16 w-16 sm:h-24 sm:w-24"
                 style={{ imageRendering: "pixelated" }}
                 onError={() => setHeadFailed(true)}
               />
@@ -65,7 +65,7 @@ export function AvatarCard({ minecraftUsername, onValidationChange }: AvatarCard
               <img
                 src={bodyUrl!}
                 alt={`Minecraft skin body for ${minecraftUsername}`}
-                className="h-40 w-20"
+                className="h-32 w-16 sm:h-40 sm:w-20"
                 style={{ imageRendering: "pixelated" }}
                 onError={() => setBodyFailed(true)}
               />
