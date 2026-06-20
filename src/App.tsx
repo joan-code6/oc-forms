@@ -7,6 +7,8 @@ import { ModeratorDashboardPage } from "@/pages/moderator-dashboard"
 import { ModeratorReviewPage } from "@/pages/moderator-review"
 import { ModeratorAuditPage } from "@/pages/moderator-audit"
 import { ModeratorAuditDetailPage } from "@/pages/moderator-audit-detail"
+import { ModeratorSettingsPage } from "@/pages/moderator-settings"
+import { ModeratorConflictsPage } from "@/pages/moderator-conflicts"
 import { NoAccessPage } from "@/pages/no-access"
 
 const queryClient = new QueryClient({
@@ -28,6 +30,8 @@ export default function App() {
               <Route path="/moderator/review" element={<ModeratorReviewPage />} />
               <Route path="/moderator/audit" element={<ModeratorAuditPage />} />
               <Route path="/moderator/audit/:id" element={<ModeratorAuditDetailPage />} />
+              <Route path="/moderator/settings" element={<ModeratorSettingsPage />} />
+              <Route path="/moderator/conflicts" element={<ModeratorConflictsPage />} />
               <Route path="/no-access" element={<NoAccessPage />} />
             </Routes>
           </main>
