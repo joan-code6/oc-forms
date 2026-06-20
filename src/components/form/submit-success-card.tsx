@@ -36,25 +36,23 @@ export function SubmitSuccessCard({
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 py-4">
-      <Button
-        onClick={onSubmit}
-        disabled={disabled || isSubmitting}
-        size="xl"
-        className={`w-full min-w-[220px] gap-3 text-base sm:w-auto ${!disabled && !isSubmitting ? "submit-glow" : ""}`}
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Submitting...
-          </>
-        ) : (
-          <>
-            Submit
-            <ArrowRight className="h-5 w-5" />
-          </>
-        )}
-      </Button>
-    </div>
+    <Button
+      onClick={onSubmit}
+      disabled={disabled || isSubmitting}
+      size="xl"
+      className={`min-w-[220px] gap-3 text-base ${!disabled && !isSubmitting ? "submit-glow" : ""}`}
+    >
+      {isSubmitting ? (
+        <>
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Submitting...
+        </>
+      ) : (
+        <>
+          Submit
+          <ArrowRight className="h-5 w-5" />
+        </>
+      )}
+    </Button>
   )
 }

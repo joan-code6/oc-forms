@@ -363,7 +363,7 @@ function FormContent() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
           <Button
             type="button"
             variant="outline"
