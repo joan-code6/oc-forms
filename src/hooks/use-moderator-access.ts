@@ -35,7 +35,7 @@ export function useModeratorAccess(): ModeratorAccessState {
     if (authLoading) return
 
     if (!user) {
-      discordLogin()
+      discordLogin(window.location.pathname)
       return
     }
 

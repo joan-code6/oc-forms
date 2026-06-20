@@ -66,6 +66,12 @@ async function verifyStaffRole(userId) {
 module.exports = async function (context) {
   const { req, res, log, error } = context;
 
+  log("Request headers:", JSON.stringify(Object.keys(req.headers || {})));
+  log("x-appwrite-user:", req.headers?.["x-appwrite-user"] || "(missing)");
+  log("x-appwrite-jwt:", req.headers?.["x-appwrite-jwt"] ? "(present)" : "(missing)");
+  log("x-fallback-cookies:", req.headers?.["x-fallback-cookies"] ? "(present)" : "(missing)");
+  log("cookie:", req.headers?.["cookie"] ? "(present)" : "(missing)");
+
   const userId = req.headers?.["x-appwrite-user"];
 
   if (!userId) {
