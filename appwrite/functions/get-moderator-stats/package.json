@@ -1,0 +1,9 @@
+{
+  "name": "get-moderator-stats",
+  "version": "1.0.0",
+  "description": "Returns moderator dashboard statistics: open applications, total closed, and closed by the current moderator.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

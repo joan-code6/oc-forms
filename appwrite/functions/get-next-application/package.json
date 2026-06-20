@@ -1,0 +1,9 @@
+{
+  "name": "get-next-application",
+  "version": "1.0.0",
+  "description": "Returns the next pending application for moderator review, or a specific application by ID.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

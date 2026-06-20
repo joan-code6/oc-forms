@@ -16,8 +16,6 @@ export function useAppwriteAuth() {
   const [error, setError] = useState<string | null>(null)
 
   const checkSession = useCallback(async () => {
-    setLoading(true)
-    setError(null)
     try {
       const session = await getSession()
       if (!session) {
@@ -46,8 +44,40 @@ export function useAppwriteAuth() {
   }, [])
 
   useEffect(() => {
-    checkSession()
-  }, [checkSession])
+    let cancelled = false
+    const run = async () => {
+      try {
+        const session = await getSession()
+        if (cancelled) return
+        if (!session) {
+          setUser(null)
+          setLoading(false)
+          return
+        }
+        const currentUser = await getCurrentUser()
+        if (cancelled) return
+        if (currentUser) {
+          setUser({
+            id: currentUser.$id,
+            name: currentUser.name,
+            email: currentUser.email,
+            avatar: currentUser.prefs?.avatar ?? undefined,
+            raw: currentUser,
+          })
+        } else {
+          setUser(null)
+        }
+      } catch (e) {
+        if (cancelled) return
+        setError(e instanceof Error ? e.message : "Failed to verify session")
+        setUser(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    run()
+    return () => { cancelled = true }
+  }, [])
 
   const loginWithDiscord = useCallback(() => {
     discordLogin()

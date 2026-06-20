@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WelcomeCard } from "@/components/form/welcome-card"
 import { UsernameCard } from "@/components/form/username-card"
@@ -13,8 +14,11 @@ import { FormProvider, useForm } from "@/hooks/use-form-state"
 import { useAppwriteAuth } from "@/hooks/use-appwrite-auth"
 import { useSubmitApplication } from "@/hooks/use-appwrite-submit"
 import { useMinecraftValidation } from "@/hooks/use-minecraft-validation"
+import { textQuestionPages, yesNoQuestions, dropdownQuestions } from "@/lib/questions"
 import { toast } from "sonner"
-import { LogIn } from "lucide-react"
+import { LogIn, ArrowRight, ArrowLeft } from "lucide-react"
+
+const TOTAL_PAGES = 6
 
 export const FORM_VERSION = "v1"
 const SUBMITTED_KEY = `outcraft-submitted-${FORM_VERSION}`
@@ -76,7 +80,7 @@ function FormLoadingSkeleton() {
 function FormContent() {
   const [minecraftValid, setMinecraftValid] = useState(false)
   const [alreadySubmitted] = useState(getAlreadySubmitted)
-  const { state, dispatch, validate } = useForm()
+  const { state, dispatch, validate, isFormComplete } = useForm()
   const { user, loading, error, loginWithDiscord } = useAppwriteAuth()
   const submitMutation = useSubmitApplication()
 
@@ -91,6 +95,73 @@ function FormContent() {
   }, [state.submitted])
 
   const isFormReady = !!user && !loading
+  const currentPage = state.currentPage
+
+  const validatePage = useCallback((): boolean => {
+    const errors: string[] = []
+
+    if (currentPage === 2) {
+      if (!state.minecraftIGN.trim() || state.minecraftIGN.trim().length < 3) {
+        errors.push("Minecraft username must be at least 3 characters.")
+      }
+      if (!state.minecraftIGN.match(/^[a-zA-Z0-9_]+$/)) {
+        errors.push("Minecraft username can only contain letters, numbers, and underscores.")
+      }
+    }
+
+    if (currentPage === 3) {
+      for (const q of yesNoQuestions) {
+        if (state.yesNoAnswers[q.id] === null || state.yesNoAnswers[q.id] === undefined) {
+          errors.push(`Please answer: "${q.text}"`)
+        }
+      }
+      for (const q of dropdownQuestions) {
+        if (!state.dropdownAnswers[q.id]) {
+          errors.push(`Please select an option for: "${q.text}"`)
+        }
+      }
+    }
+
+    if (currentPage >= 4 && currentPage <= 6) {
+      const pageQuestions = textQuestionPages[currentPage - 4]
+      for (const q of pageQuestions) {
+        if (!state.textAnswers[q.id]?.trim()) {
+          errors.push(`Please fill in: "${q.text}"`)
+        }
+      }
+    }
+
+    dispatch({ type: "SET_ERRORS", errors })
+    return errors.length === 0
+  }, [currentPage, state, dispatch])
+
+  const handleNext = useCallback(() => {
+    if (currentPage === 1) {
+      dispatch({ type: "SET_PAGE", page: 2 })
+      return
+    }
+
+    if (!validatePage()) {
+      const firstError = document.querySelector("[data-validation-error]")
+      if (firstError) {
+        firstError.scrollIntoView({ behavior: "smooth", block: "center" })
+      }
+      toast.error("Please fix the errors before continuing.")
+      return
+    }
+
+    if (currentPage < TOTAL_PAGES) {
+      dispatch({ type: "SET_PAGE", page: currentPage + 1 })
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }
+  }, [currentPage, validatePage, dispatch])
+
+  const handleBack = useCallback(() => {
+    if (currentPage > 1) {
+      dispatch({ type: "SET_PAGE", page: currentPage - 1 })
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }
+  }, [currentPage, dispatch])
 
   const handleSubmit = useCallback(() => {
     if (!isFormReady || !user) {
@@ -114,7 +185,8 @@ function FormContent() {
 
     dispatch({ type: "SET_SUBMITTING", value: true })
 
-    const { q3: _, q4: __, ...backendYesNoAnswers } = state.yesNoAnswers
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { q3: _q3, q4: _q4, ...backendYesNoAnswers } = state.yesNoAnswers
 
     submitMutation.mutate(
       {
@@ -175,55 +247,86 @@ function FormContent() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 pb-24 pt-8 md:pt-12">
-      <Card className="form-card animate-in" style={{ animationDelay: "0ms" }}>
-        <CardContent className="p-6">
-          <WelcomeCard
-            user={user}
-            loading={loading}
-            error={error}
-            onLogin={loginWithDiscord}
-          />
-        </CardContent>
-      </Card>
+      {/* Page 1: Welcome */}
+      {currentPage === 1 && (
+        <Card className="form-card animate-in">
+          <CardContent className="p-6">
+            <WelcomeCard
+              user={user}
+              loading={loading}
+              error={error}
+              onLogin={loginWithDiscord}
+            />
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="form-card animate-in" style={{ animationDelay: "60ms" }}>
-        <CardContent className="p-6">
-          <UsernameCard />
-        </CardContent>
-      </Card>
-      <Card className="form-card animate-in" style={{ animationDelay: "120ms" }}>
-        <CardContent className="p-6">
-          <AvatarCard
-            minecraftUsername={state.minecraftIGN}
-            onValidationChange={setMinecraftValid}
-          />
-        </CardContent>
-      </Card>
+      {/* Page 2: Username + Avatar + Timezone */}
+      {currentPage === 2 && (
+        <>
+          <Card className="form-card animate-in">
+            <CardContent className="p-6">
+              <UsernameCard />
+            </CardContent>
+          </Card>
+          <Card className="form-card animate-in">
+            <CardContent className="p-6">
+              <AvatarCard
+                minecraftUsername={state.minecraftIGN}
+                onValidationChange={setMinecraftValid}
+              />
+            </CardContent>
+          </Card>
+          <Card className="form-card animate-in">
+            <CardContent className="p-6">
+              <TimezoneCard />
+            </CardContent>
+          </Card>
+        </>
+      )}
 
-      <Card className="form-card animate-in" style={{ animationDelay: "180ms" }}>
-        <CardContent className="p-6">
-          <TimezoneCard />
-        </CardContent>
-      </Card>
+      {/* Page 3: Short questions (Yes/No + Dropdown) */}
+      {currentPage === 3 && (
+        <>
+          <Card className="form-card animate-in">
+            <CardContent className="p-6">
+              <YesNoTableCard />
+            </CardContent>
+          </Card>
+          <Card className="form-card animate-in">
+            <CardContent className="p-6">
+              <DropdownCard />
+            </CardContent>
+          </Card>
+        </>
+      )}
 
-      <Card className="form-card animate-in" style={{ animationDelay: "240ms" }}>
-        <CardContent className="p-6">
-          <YesNoTableCard />
-        </CardContent>
-      </Card>
+      {/* Pages 4-6: Text questions */}
+      {currentPage >= 4 && currentPage <= 6 && (
+        <Card className="form-card animate-in">
+          <CardContent className="p-6">
+            <TextQuestionsCard
+              questions={textQuestionPages[currentPage - 4]}
+              title={
+                currentPage === 4
+                  ? "Experience & Goals"
+                  : currentPage === 5
+                    ? "Skills & Builds"
+                    : "Kingdom & Availability"
+              }
+              description={
+                currentPage === 4
+                  ? "Tell us about your past experience and what you want to achieve."
+                  : currentPage === 5
+                    ? "Share your Minecraft skills and building ideas."
+                    : "Describe your leadership style and availability."
+              }
+            />
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="form-card animate-in" style={{ animationDelay: "300ms" }}>
-        <CardContent className="p-6">
-          <DropdownCard />
-        </CardContent>
-      </Card>
-
-      <Card className="form-card animate-in" style={{ animationDelay: "360ms" }}>
-        <CardContent className="p-6">
-          <TextQuestionsCard />
-        </CardContent>
-      </Card>
-
+      {/* Validation errors */}
       {state.validationErrors.length > 0 && (
         <div className="animate-in rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400 border-l-4 border-l-red-500" data-validation-error>
           <ul className="list-inside list-disc space-y-1">
@@ -234,17 +337,59 @@ function FormContent() {
         </div>
       )}
 
-      <div className="form-card animate-in" style={{ animationDelay: "420ms" }}>
-        <SubmitSuccessCard
-          isSubmitting={state.isSubmitting}
-          submitted={state.submitted}
-          disabled={!isFormReady}
-          onSubmit={handleSubmit}
-        />
-      </div>
+      {/* Navigation buttons */}
+      {currentPage < TOTAL_PAGES ? (
+        <div className="flex items-center justify-between gap-4">
+          {currentPage > 1 ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleBack}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+          ) : (
+            <div />
+          )}
+          <Button
+            type="button"
+            onClick={handleNext}
+            className="gap-2"
+          >
+            Next page
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleBack}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <SubmitSuccessCard
+            isSubmitting={state.isSubmitting}
+            submitted={state.submitted}
+            disabled={!isFormReady || !isFormComplete}
+            onSubmit={handleSubmit}
+          />
+        </div>
+      )}
+
+      {isFormReady && !isFormComplete && currentPage === TOTAL_PAGES && (
+        <div className="animate-in flex items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-center text-sm text-amber-400/80">
+          Please fill out all questions before submitting.
+        </div>
+      )}
 
       {!user && (
-        <div className="animate-in flex items-center justify-center gap-2 rounded-lg border border-brand/20 bg-brand/5 px-4 py-3 text-center text-sm text-white/50" style={{ animationDelay: "480ms" }}>
+        <div className="animate-in flex items-center justify-center gap-2 rounded-lg border border-brand/20 bg-brand/5 px-4 py-3 text-center text-sm text-white/50">
           <LogIn className="h-4 w-4 text-brand" />
           You must verify with Discord before you can submit.
         </div>

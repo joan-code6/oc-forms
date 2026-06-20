@@ -1,0 +1,9 @@
+{
+  "name": "submit-application-rating",
+  "version": "1.0.0",
+  "description": "Saves a moderator's rating for an application and marks it as reviewed.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

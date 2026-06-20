@@ -2,21 +2,28 @@ import { Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useForm } from "@/hooks/use-form-state"
-import { textQuestions } from "@/lib/questions"
+import { textQuestions, type TextQuestion } from "@/lib/questions"
 
-export function TextQuestionsCard() {
+interface TextQuestionsCardProps {
+  questions?: TextQuestion[]
+  title?: string
+  description?: string
+}
+
+export function TextQuestionsCard({ questions, title, description }: TextQuestionsCardProps) {
   const { state, dispatch } = useForm()
+  const displayQuestions = questions || textQuestions
 
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h2 className="text-xl font-bold tracking-tight">Tell us about yourself</h2>
+        <h2 className="text-xl font-bold tracking-tight">{title || "Tell us about yourself"}</h2>
         <p className="text-sm text-white/50">
-          A few more questions to get to know you and your playstyle.
+          {description || "A few more questions to get to know you and your playstyle."}
         </p>
       </div>
 
-      {textQuestions.map((q) => {
+      {displayQuestions.map((q) => {
         const value = state.textAnswers[q.id] || ""
         const hasAnswer = value.trim().length > 0
         const isNearLimit = q.maxLength && value.length > q.maxLength * 0.9

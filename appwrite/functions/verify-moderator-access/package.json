@@ -1,0 +1,9 @@
+{
+  "name": "verify-moderator-access",
+  "version": "1.0.0",
+  "description": "Checks whether the current Appwrite user has the Discord staff role required for moderator access.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

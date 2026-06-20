@@ -7,9 +7,47 @@ interface AvatarCardProps {
   onValidationChange?: (valid: boolean) => void
 }
 
-export function AvatarCard({ minecraftUsername, onValidationChange }: AvatarCardProps) {
+function SkinImages({ uuid, username }: { uuid: string; username: string }) {
   const [headFailed, setHeadFailed] = useState(false)
   const [bodyFailed, setBodyFailed] = useState(false)
+
+  const headUrl = `https://mc-heads.net/head/${uuid}/160`
+  const bodyUrl = `https://mc-heads.net/body/${uuid}/160`
+  const showPlaceholder = bodyFailed
+
+  if (showPlaceholder) {
+    return (
+      <div className="flex h-48 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-brand/10 to-transparent sm:h-56 sm:w-40">
+        <span className="text-4xl font-bold text-brand/30">?</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-end gap-4 sm:gap-6">
+      {!headFailed && (
+        <img
+          src={headUrl}
+          alt={`Minecraft skin head for ${username}`}
+          className="h-16 w-16 sm:h-24 sm:w-24"
+          style={{ imageRendering: "pixelated" }}
+          onError={() => setHeadFailed(true)}
+        />
+      )}
+      {!bodyFailed && (
+        <img
+          src={bodyUrl}
+          alt={`Minecraft skin body for ${username}`}
+          className="h-32 w-16 sm:h-40 sm:w-20"
+          style={{ imageRendering: "pixelated" }}
+          onError={() => setBodyFailed(true)}
+        />
+      )}
+    </div>
+  )
+}
+
+export function AvatarCard({ minecraftUsername, onValidationChange }: AvatarCardProps) {
   const { data, isLoading } = useMinecraftValidation(minecraftUsername)
 
   const hasUsername = minecraftUsername.trim().length >= 3
@@ -17,19 +55,10 @@ export function AvatarCard({ minecraftUsername, onValidationChange }: AvatarCard
   const isInvalid = data?.success === false && !isLoading && hasUsername
 
   const uuid = data?.uuid || null
-  const headUrl = uuid ? `https://mc-heads.net/head/${uuid}/160` : null
-  const bodyUrl = uuid ? `https://mc-heads.net/body/${uuid}/160` : null
 
   useEffect(() => {
     onValidationChange?.(isValid)
   }, [isValid, onValidationChange])
-
-  useEffect(() => {
-    setHeadFailed(false)
-    setBodyFailed(false)
-  }, [minecraftUsername, uuid])
-
-  const showPlaceholder = !bodyUrl || bodyFailed
 
   return (
     <div className="space-y-4">
@@ -46,30 +75,11 @@ export function AvatarCard({ minecraftUsername, onValidationChange }: AvatarCard
           <div className="flex h-48 w-full items-center justify-center sm:h-56 sm:w-40">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
           </div>
-        ) : showPlaceholder ? (
+        ) : uuid ? (
+          <SkinImages key={uuid} uuid={uuid} username={minecraftUsername} />
+        ) : (
           <div className="flex h-48 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-brand/10 to-transparent sm:h-56 sm:w-40">
             <span className="text-4xl font-bold text-brand/30">?</span>
-          </div>
-        ) : (
-          <div className="flex items-end gap-4 sm:gap-6">
-            {!headFailed && (
-              <img
-                src={headUrl!}
-                alt={`Minecraft skin head for ${minecraftUsername}`}
-                className="h-16 w-16 sm:h-24 sm:w-24"
-                style={{ imageRendering: "pixelated" }}
-                onError={() => setHeadFailed(true)}
-              />
-            )}
-            {!bodyFailed && (
-              <img
-                src={bodyUrl!}
-                alt={`Minecraft skin body for ${minecraftUsername}`}
-                className="h-32 w-16 sm:h-40 sm:w-20"
-                style={{ imageRendering: "pixelated" }}
-                onError={() => setBodyFailed(true)}
-              />
-            )}
           </div>
         )}
 

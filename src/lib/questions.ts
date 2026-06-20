@@ -37,7 +37,7 @@ export const yesNoQuestions: YesNoQuestion[] = [
   {
     id: "q2",
     type: "yesno",
-    text: "Do you have a clipping software?",
+    text: "Do you have clipping software?",
     order: 2,
   },
   {
@@ -49,7 +49,7 @@ export const yesNoQuestions: YesNoQuestion[] = [
   {
     id: "q4",
     type: "yesno",
-    text: "Have you read the event rules and understand the penalties of breaking this rule may result in bans from all future events?",
+    text: "Have you read the event rules and understand the penalties of breaking these rules may result in bans from all future events?",
     order: 4,
   },
 ]
@@ -159,4 +159,10 @@ export const textQuestions: TextQuestion[] = [
     maxLength: 500,
     placeholder: "Let us know your availability and any days you cannot attend...",
   },
+]
+
+export const textQuestionPages: TextQuestion[][] = [
+  textQuestions.filter((q) => ["t1", "t2", "t3", "t4"].includes(q.id)),
+  textQuestions.filter((q) => ["t5", "t6", "t7"].includes(q.id)),
+  textQuestions.filter((q) => ["t10", "t11", "t12", "t13"].includes(q.id)),
 ]

@@ -3,6 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { Toaster } from "sonner"
 import { FormPage } from "@/pages/form"
 import { AuthCallback } from "@/pages/auth-callback"
+import { ModeratorDashboardPage } from "@/pages/moderator-dashboard"
+import { ModeratorReviewPage } from "@/pages/moderator-review"
+import { NoAccessPage } from "@/pages/no-access"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +22,9 @@ export default function App() {
             <Routes>
               <Route path="/" element={<FormPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/moderator" element={<ModeratorDashboardPage />} />
+              <Route path="/moderator/review" element={<ModeratorReviewPage />} />
+              <Route path="/no-access" element={<NoAccessPage />} />
             </Routes>
           </main>
 
