@@ -5,6 +5,7 @@ import { FormPage } from "@/pages/form"
 import { AuthCallback } from "@/pages/auth-callback"
 import { ModeratorDashboardPage } from "@/pages/moderator-dashboard"
 import { ModeratorReviewPage } from "@/pages/moderator-review"
+import { ModeratorAuditPage } from "@/pages/moderator-audit"
 import { NoAccessPage } from "@/pages/no-access"
 
 const queryClient = new QueryClient({
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/moderator" element={<ModeratorDashboardPage />} />
               <Route path="/moderator/review" element={<ModeratorReviewPage />} />
+              <Route path="/moderator/audit" element={<ModeratorAuditPage />} />
               <Route path="/no-access" element={<NoAccessPage />} />
             </Routes>
           </main>
