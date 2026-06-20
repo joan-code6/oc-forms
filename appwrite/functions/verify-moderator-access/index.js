@@ -72,7 +72,7 @@ module.exports = async function (context) {
   log("x-fallback-cookies:", req.headers?.["x-fallback-cookies"] ? "(present)" : "(missing)");
   log("cookie:", req.headers?.["cookie"] ? "(present)" : "(missing)");
 
-  const userId = req.headers?.["x-appwrite-user"];
+  const userId = req.headers?.["x-appwrite-user-id"];
 
   if (!userId) {
     return res.json({ allowed: false, error: "Unauthorized." }, 401);

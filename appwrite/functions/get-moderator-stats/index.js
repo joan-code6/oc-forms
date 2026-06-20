@@ -60,7 +60,7 @@ async function verifyStaffRole(userId) {
 module.exports = async function (context) {
   const { req, res, log, error } = context;
 
-  const userId = req.headers?.["x-appwrite-user"];
+  const userId = req.headers?.["x-appwrite-user-id"];
 
   if (!userId) {
     return res.json({ error: "Unauthorized." }, 401);
