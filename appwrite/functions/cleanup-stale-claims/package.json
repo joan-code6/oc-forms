@@ -1,0 +1,9 @@
+{
+  "name": "cleanup-stale-claims",
+  "version": "1.0.0",
+  "description": "Scheduled function that releases claims older than 20 minutes back to pending.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

@@ -289,6 +289,38 @@ module.exports = async function (context) {
       return res.json({ application: formatApplication(freshDoc, discordRolesResult) });
     }
 
+    // --- Release any existing claim by this moderator ---
+    const myClaims = await databases.listDocuments(
+      DATABASE_ID,
+      CLAIMS_COLLECTION_ID,
+      [Query.equal("moderatorUserId", userId)]
+    );
+
+    for (const claim of myClaims.documents) {
+      try {
+        const app = await databases.getDocument(
+          DATABASE_ID,
+          APPLICATIONS_COLLECTION_ID,
+          claim.$id
+        );
+        if (app.status === "in_review" && app.reviewedBy === userId) {
+          await databases.updateDocument(
+            DATABASE_ID,
+            APPLICATIONS_COLLECTION_ID,
+            claim.$id,
+            { status: "pending", reviewedBy: null, reviewStartedAt: null }
+          );
+        }
+      } catch {
+        // App may have been deleted
+      }
+      try {
+        await databases.deleteDocument(DATABASE_ID, CLAIMS_COLLECTION_ID, claim.$id);
+      } catch {
+        // Ignore cleanup failures
+      }
+    }
+
     // --- Clean up expired claims ---
     const expiredThreshold = new Date(Date.now() - LOCK_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
@@ -302,7 +334,6 @@ module.exports = async function (context) {
     );
 
     for (const claim of expiredClaims.documents) {
-      // Only reset if the app is still in_review — never touch reviewed/closed apps
       try {
         const app = await databases.getDocument(
           DATABASE_ID,
@@ -320,7 +351,6 @@ module.exports = async function (context) {
       } catch {
         // App may have been deleted
       }
-      // Delete the stale claim
       try {
         await databases.deleteDocument(
           DATABASE_ID,
