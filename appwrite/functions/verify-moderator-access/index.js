@@ -58,8 +58,10 @@ async function verifyStaffRole(userId, log) {
 
     if (!member || !member.roles) return { isStaff: false };
 
-    log("Looking for staff role:", DISCORD_STAFF_ROLE_ID, "in roles:", member.roles);
+    log("ENV_DISCORD_STAFF_ROLE_ID:", JSON.stringify(DISCORD_STAFF_ROLE_ID), "type:", typeof DISCORD_STAFF_ROLE_ID);
+    log("User roles:", JSON.stringify(member.roles));
     const hasStaffRole = member.roles.includes(DISCORD_STAFF_ROLE_ID);
+    log("hasStaffRole:", hasStaffRole);
 
     return {
       isStaff: hasStaffRole,

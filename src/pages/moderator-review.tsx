@@ -57,6 +57,7 @@ export function ModeratorReviewPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [rating, setRating] = useState<number | null>(null)
   const [hasSelected, setHasSelected] = useState(false)
+  const [moderatorNote, setModeratorNote] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -120,11 +121,13 @@ export function ModeratorReviewPage() {
       const result = await callFunction<RatingResult>(RATING_FUNCTION_ID, {
         applicationId: application.id,
         rating,
+        moderatorNote: moderatorNote.trim() || undefined,
       })
 
       if (result.success) {
         setRating(null)
         setHasSelected(false)
+        setModeratorNote("")
         await loadApplication()
       } else {
         setSubmitError(result.error || "Failed to save rating.")
@@ -315,6 +318,20 @@ export function ModeratorReviewPage() {
               >
                 {hasSelected ? `${rating}%` : "—%"}
               </span>
+            </div>
+
+            <div className="w-full max-w-xl space-y-2">
+              <label htmlFor="moderatorNote" className="text-sm text-white/60">
+                Moderator Note <span className="text-white/30">(optional)</span>
+              </label>
+              <textarea
+                id="moderatorNote"
+                value={moderatorNote}
+                onChange={(e) => setModeratorNote(e.target.value)}
+                placeholder="Leave a note about this application..."
+                rows={3}
+                className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
+              />
             </div>
 
             {submitError && (

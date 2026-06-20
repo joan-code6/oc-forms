@@ -84,7 +84,7 @@ module.exports = async function (context) {
     return res.json({ success: false, error: "Invalid JSON payload." }, 400);
   }
 
-  const { applicationId, rating } = body;
+  const { applicationId, rating, moderatorNote } = body;
 
   if (!applicationId || typeof applicationId !== "string") {
     return res.json({ success: false, error: "Missing applicationId." }, 400);
@@ -135,32 +135,44 @@ module.exports = async function (context) {
 
     const ratingZone = getRatingZone(rating);
 
+    const reviewData = {
+      applicationId,
+      moderatorUserId: userId,
+      moderatorDiscordId: staffCheck.discordId,
+      moderatorDiscordUsername: staffCheck.discordUsername,
+      rating,
+      ratingZone,
+      reviewedAt: new Date().toISOString(),
+    };
+
+    if (moderatorNote && typeof moderatorNote === "string" && moderatorNote.trim()) {
+      reviewData.moderatorNote = moderatorNote.trim();
+    }
+
     await databases.createDocument(
       DATABASE_ID,
       REVIEWS_COLLECTION_ID,
       "unique()",
-      {
-        applicationId,
-        moderatorUserId: userId,
-        moderatorDiscordId: staffCheck.discordId,
-        moderatorDiscordUsername: staffCheck.discordUsername,
-        rating,
-        ratingZone,
-        reviewedAt: new Date().toISOString(),
-      }
+      reviewData
     );
+
+    const appUpdateData = {
+      status: "reviewed",
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: userId,
+      rating,
+      ratingZone,
+    };
+
+    if (moderatorNote && typeof moderatorNote === "string" && moderatorNote.trim()) {
+      appUpdateData.moderatorNote = moderatorNote.trim();
+    }
 
     await databases.updateDocument(
       DATABASE_ID,
       APPLICATIONS_COLLECTION_ID,
       applicationId,
-      {
-        status: "reviewed",
-        reviewedAt: new Date().toISOString(),
-        reviewedBy: userId,
-        rating,
-        ratingZone,
-      }
+      appUpdateData
     );
 
     // Clean up the claim document
