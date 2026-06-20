@@ -4,11 +4,11 @@ const ENDPOINT          = process.env.APPWRITE_ENDPOINT;
 const PROJECT_ID        = process.env.APPWRITE_PROJECT_ID;
 const API_KEY           = process.env.APPWRITE_API_KEY;
 const DATABASE_ID       = process.env.APPWRITE_DATABASE_ID;
-const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_ID;
 const REVIEWS_COLLECTION_ID = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN      = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID       = process.env.DISCORD_GUILD_ID;
 const ADMIN_ROLE_ID           = process.env.ADMIN_ROLE_ID;
+const CONFLICT_THRESHOLD      = process.env.CONFLICT_THRESHOLD || "30";
 
 function getServerClient() {
   const client = new Client();
@@ -71,58 +71,59 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
-    const reviews = await databases.listDocuments(
+    const allReviews = await databases.listDocuments(
       DATABASE_ID,
       REVIEWS_COLLECTION_ID,
       [
         Query.orderDesc("reviewedAt"),
-        Query.limit(50),
+        Query.limit(200),
       ]
     );
 
-    const formatted = reviews.documents.map((doc) => ({
-      id: doc.$id,
-      applicationId: doc.applicationId,
-      moderatorUserId: doc.moderatorUserId,
-      moderatorDiscordId: doc.moderatorDiscordId,
-      moderatorDiscordUsername: doc.moderatorDiscordUsername,
-      rating: doc.rating,
-      ratingZone: doc.ratingZone,
-      moderatorNote: doc.moderatorNote || null,
-      reviewedAt: doc.reviewedAt,
-      application: null,
-    }));
-
-    const applicationIds = [...new Set(formatted.map((r) => r.applicationId).filter(Boolean))];
-    if (applicationIds.length > 0) {
-      const applications = await databases.listDocuments(
-        DATABASE_ID,
-        APPLICATIONS_COLLECTION_ID,
-        [Query.equal("$id", applicationIds), Query.limit(100)]
-      );
-
-      const appMap = new Map();
-      for (const app of applications.documents) {
-        appMap.set(app.$id, {
-          id: app.$id,
-          minecraftIGN: app.minecraftIGN || "",
-          discordUsername: app.discordUsername || "",
-          discordId: app.discordId || "",
-          timezone: app.timezone || "",
-          status: app.status || "",
-          createdAt: app.createdAt || "",
-          skinUrl: `https://mc-heads.net/body/${encodeURIComponent(app.minecraftIGN || "")}`,
-        });
+    const byApp = {};
+    for (const review of allReviews.documents) {
+      if (!byApp[review.applicationId]) {
+        byApp[review.applicationId] = [];
       }
+      byApp[review.applicationId].push({
+        id: review.$id,
+        rating: review.rating,
+        ratingZone: review.ratingZone,
+        moderatorUserId: review.moderatorUserId,
+        moderatorDiscordUsername: review.moderatorDiscordUsername,
+        moderatorDiscordId: review.moderatorDiscordId,
+        moderatorNote: review.moderatorNote || null,
+        reviewedAt: review.reviewedAt,
+      });
+    }
 
-      for (const review of formatted) {
-        review.application = appMap.get(review.applicationId) || null;
+    const threshold = parseInt(CONFLICT_THRESHOLD, 10);
+    const conflicts = [];
+
+    for (const [appId, reviews] of Object.entries(byApp)) {
+      if (reviews.length < 2) continue;
+
+      const ratings = reviews.map((r) => r.rating);
+      const min = Math.min(...ratings);
+      const max = Math.max(...ratings);
+      const diff = max - min;
+
+      if (diff >= threshold) {
+        conflicts.push({
+          applicationId: appId,
+          reviews,
+          minRating: min,
+          maxRating: max,
+          ratingSpread: diff,
+        });
       }
     }
 
-    return res.json({ reviews: formatted, total: reviews.total });
+    conflicts.sort((a, b) => b.ratingSpread - a.ratingSpread);
+
+    return res.json({ conflicts, total: conflicts.length });
   } catch (e) {
-    error("Failed to fetch reviews:", e.message);
-    return res.json({ error: "Failed to load reviews." }, 500);
+    error("Failed to find conflicts:", e.message);
+    return res.json({ error: "Failed to load conflicts." }, 500);
   }
 };

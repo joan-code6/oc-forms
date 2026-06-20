@@ -6,6 +6,8 @@ const API_KEY     = process.env.APPWRITE_API_KEY;
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
 const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_ID;
 const CLAIMS_COLLECTION_ID = process.env.APPWRITE_CLAIMS_COLLECTION_ID;
+const SETTINGS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
+const REVIEWS_COLLECTION_ID = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
 const DISCORD_STAFF_ROLE_ID = process.env.DISCORD_STAFF_ROLE_ID;
@@ -18,6 +20,22 @@ function getServerClient() {
   const client = new Client();
   client.setEndpoint(ENDPOINT).setProject(PROJECT_ID).setKey(API_KEY);
   return client;
+}
+
+async function getSettings(databases) {
+  try {
+    const settings = await databases.getDocument(
+      DATABASE_ID,
+      SETTINGS_COLLECTION_ID,
+      "global"
+    );
+    return {
+      appsPaused: settings.appsPaused || false,
+      doubleReviewEnabled: settings.doubleReviewEnabled || false,
+    };
+  } catch {
+    return { appsPaused: false, doubleReviewEnabled: false };
+  }
 }
 
 async function verifyStaffRole(userId) {
@@ -200,6 +218,13 @@ module.exports = async function (context) {
   try {
     const client = getServerClient();
     const databases = new Databases(client);
+
+    // Check settings
+    const settings = await getSettings(databases);
+
+    if (settings.appsPaused && !applicationId) {
+      return res.json({ application: null, paused: true });
+    }
 
     // --- Specific application requested ---
     if (applicationId) {

@@ -1,16 +1,30 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ArrowLeft, AlertTriangle, ShieldCheck } from "lucide-react"
+import { ArrowLeft, AlertTriangle, ShieldCheck, Search, Pencil, User } from "lucide-react"
 
 const REVIEWS_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_REVIEWS_ID || "get-mod-reviews"
-const UPDATE_REVIEW_FUNCTION_ID =
-  import.meta.env.VITE_APPWRITE_FUNCTION_UPDATE_REVIEW_ID || "update-mod-review"
+
+interface ApplicationSummary {
+  id: string
+  minecraftIGN: string
+  discordUsername: string
+  skinUrl: string
+  status: string
+}
 
 interface ReviewData {
   id: string
@@ -22,18 +36,12 @@ interface ReviewData {
   ratingZone: string
   moderatorNote: string | null
   reviewedAt: string
+  application: ApplicationSummary | null
 }
 
 interface ReviewsResult {
   reviews: ReviewData[]
   total: number
-}
-
-function getRatingZone(value: number): "red" | "orange" | "yellow" | "green" {
-  if (value <= 25) return "red"
-  if (value <= 50) return "orange"
-  if (value <= 75) return "yellow"
-  return "green"
 }
 
 export function ModeratorAuditPage() {
@@ -43,71 +51,45 @@ export function ModeratorAuditPage() {
   const [reviews, setReviews] = useState<ReviewData[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editRating, setEditRating] = useState<number>(50)
-  const [editNote, setEditNote] = useState<string>("")
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-
-  const loadReviews = useCallback(async () => {
-    setLoading(true)
-    setLoadError(null)
-    try {
-      const result = await callFunction<ReviewsResult>(REVIEWS_FUNCTION_ID)
-      setReviews(result.reviews)
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Failed to load reviews.")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const [search, setSearch] = useState("")
+  const [reviewerFilter, setReviewerFilter] = useState("all")
 
   useEffect(() => {
     if (!allowed) return
-    loadReviews()
+    let cancelled = false
+    callFunction<ReviewsResult>(REVIEWS_FUNCTION_ID)
+      .then((result) => {
+        if (!cancelled) setReviews(result.reviews)
+      })
+      .catch((e) => {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : "Failed to load reviews.")
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
   }, [allowed])
 
-  const startEdit = (review: ReviewData) => {
-    setEditingId(review.id)
-    setEditRating(review.rating)
-    setEditNote(review.moderatorNote || "")
-    setSaveError(null)
-  }
+  const reviewers = useMemo(() => {
+    const names = new Set(reviews.map((r) => r.moderatorDiscordUsername).filter(Boolean))
+    return ["all", ...Array.from(names).sort()]
+  }, [reviews])
 
-  const cancelEdit = () => {
-    setEditingId(null)
-    setSaveError(null)
-  }
-
-  const handleSave = async () => {
-    if (!editingId) return
-    setSaving(true)
-    setSaveError(null)
-    try {
-      const review = reviews.find((r) => r.id === editingId)
-      if (!review) return
-      const result = await callFunction<{ success: boolean; error?: string }>(
-        UPDATE_REVIEW_FUNCTION_ID,
-        { reviewId: editingId, rating: editRating, moderatorNote: editNote, applicationId: review.applicationId }
-      )
-      if (result.success) {
-        setReviews((prev) =>
-          prev.map((r) =>
-            r.id === editingId
-              ? { ...r, rating: editRating, ratingZone: getRatingZone(editRating), moderatorNote: editNote || null }
-              : r
-          )
-        )
-        setEditingId(null)
-      } else {
-        setSaveError(result.error || "Failed to update.")
-      }
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Failed to save.")
-    } finally {
-      setSaving(false)
-    }
-  }
+  const filteredReviews = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return reviews.filter((review) => {
+      const app = review.application
+      const matchesSearch =
+        !query ||
+        app?.minecraftIGN.toLowerCase().includes(query) ||
+        app?.discordUsername.toLowerCase().includes(query) ||
+        review.moderatorDiscordUsername.toLowerCase().includes(query) ||
+        review.applicationId.toLowerCase().includes(query)
+      const matchesReviewer =
+        reviewerFilter === "all" || review.moderatorDiscordUsername === reviewerFilter
+      return matchesSearch && matchesReviewer
+    })
+  }, [reviews, search, reviewerFilter])
 
   if (accessLoading || !allowed) return null
 
@@ -128,119 +110,116 @@ export function ModeratorAuditPage() {
         </div>
       )}
 
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+          <Input
+            placeholder="Search by applicant, reviewer, or app ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={reviewerFilter} onValueChange={setReviewerFilter}>
+          <SelectTrigger className="w-full sm:w-56">
+            <SelectValue placeholder="Filter by reviewer" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All reviewers</SelectItem>
+            {reviewers
+              .filter((name) => name !== "all")
+              .map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {loading ? (
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full" />
+            <Skeleton key={i} className="h-24 w-full" />
           ))}
         </div>
-      ) : reviews.length === 0 ? (
+      ) : filteredReviews.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-white/40">No reviews found.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {reviews.map((review) => (
-            <Card key={review.id}>
-              <CardContent className="p-5">
-                {editingId === review.id ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <label className="text-xs text-white/50 mb-1 block">Rating</label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            value={editRating}
-                            onChange={(e) => setEditRating(Number(e.target.value))}
-                            className="flex-1"
-                            style={{
-                              background: "linear-gradient(to right, #ef4444 0%, #ef4444 25%, #f97316 25%, #f97316 50%, #eab308 50%, #eab308 75%, #22c55e 75%, #22c55e 100%)",
-                              height: "8px",
-                              borderRadius: "4px",
-                              appearance: "none",
-                              cursor: "pointer",
-                            }}
-                          />
-                          <span
-                            className="text-xl font-bold min-w-[3ch]"
-                            style={{
-                              color: getRatingZone(editRating) === "red" ? "#ef4444"
-                                : getRatingZone(editRating) === "orange" ? "#f97316"
-                                : getRatingZone(editRating) === "yellow" ? "#eab308"
-                                : "#22c55e",
-                            }}
-                          >
-                            {editRating}%
-                          </span>
-                        </div>
+          {filteredReviews.map((review) => (
+            <Card key={review.id} className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex flex-col sm:flex-row">
+                  <div className="flex flex-1 items-start gap-4 p-5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                      {review.application ? (
+                        <img
+                          src={review.application.skinUrl}
+                          alt={`${review.application.minecraftIGN} skin`}
+                          className="h-10 w-auto rounded"
+                        />
+                      ) : (
+                        <User className="h-6 w-6 text-white/30" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-sm font-medium text-white">
+                          {review.application?.minecraftIGN || "Unknown applicant"}
+                        </span>
+                        <span className="text-sm text-white/40">
+                          {review.application?.discordUsername || "No discord"}
+                        </span>
                       </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-white/50 mb-1 block">Note</label>
-                      <textarea
-                        value={editNote}
-                        onChange={(e) => setEditNote(e.target.value)}
-                        rows={3}
-                        className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
-                      />
-                    </div>
-                    {saveError && (
-                      <div className="flex items-center gap-2 text-sm text-red-400">
-                        <AlertTriangle className="h-4 w-4 shrink-0" />
-                        {saveError}
-                      </div>
-                    )}
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="outline" size="sm" onClick={cancelEdit} disabled={saving}>
-                        Cancel
-                      </Button>
-                      <Button size="sm" onClick={handleSave} disabled={saving}>
-                        {saving ? "Saving..." : "Save"}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-white/50">
+                      <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <span className="text-white/50">
                           {new Date(review.reviewedAt).toLocaleDateString()}
                         </span>
                         <span
-                          className="text-sm font-medium px-2 py-0.5 rounded"
+                          className="font-medium"
                           style={{
                             color:
-                              review.ratingZone === "red" ? "#ef4444"
-                              : review.ratingZone === "orange" ? "#f97316"
-                              : review.ratingZone === "yellow" ? "#eab308"
-                              : "#22c55e",
+                              review.ratingZone === "red"
+                                ? "#ef4444"
+                                : review.ratingZone === "orange"
+                                  ? "#f97316"
+                                  : review.ratingZone === "yellow"
+                                    ? "#eab308"
+                                    : "#22c55e",
                           }}
                         >
                           {review.rating}%
                         </span>
-                        <span className="text-sm text-white/60">
+                        <span className="text-white/60">
                           by {review.moderatorDiscordUsername}
                         </span>
+                        {review.application?.status && (
+                          <span className="rounded bg-white/10 px-2 py-0.5 text-xs text-white/70 capitalize">
+                            {review.application.status}
+                          </span>
+                        )}
                       </div>
                       {review.moderatorNote && (
-                        <p className="text-sm text-white/70">{review.moderatorNote}</p>
+                        <p className="line-clamp-2 text-sm text-white/70">
+                          {review.moderatorNote}
+                        </p>
                       )}
-                      <p className="text-xs text-white/30 font-mono">
-                        App: {review.applicationId}
-                      </p>
                     </div>
+                  </div>
+                  <div className="flex items-center justify-end border-t border-white/5 p-3 sm:border-t-0 sm:border-l sm:p-5">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => startEdit(review)}
+                      onClick={() => navigate(`/moderator/audit/${review.id}`)}
                     >
+                      <Pencil className="h-4 w-4 mr-1" />
                       Edit
                     </Button>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           ))}

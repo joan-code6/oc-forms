@@ -5,10 +5,10 @@ const PROJECT_ID        = process.env.APPWRITE_PROJECT_ID;
 const API_KEY           = process.env.APPWRITE_API_KEY;
 const DATABASE_ID       = process.env.APPWRITE_DATABASE_ID;
 const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_ID;
-const REVIEWS_COLLECTION_ID = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
-const DISCORD_BOT_TOKEN      = process.env.DISCORD_BOT_TOKEN;
-const DISCORD_GUILD_ID       = process.env.DISCORD_GUILD_ID;
-const ADMIN_ROLE_ID           = process.env.ADMIN_ROLE_ID;
+const REVIEWS_COLLECTION_ID     = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
+const ADMIN_ROLE_ID      = process.env.ADMIN_ROLE_ID;
 
 function getServerClient() {
   const client = new Client();
@@ -62,6 +62,27 @@ module.exports = async function (context) {
     return res.json({ error: "Unauthorized." }, 401);
   }
 
+  let body;
+  try {
+    body = JSON.parse(req.body || "{}");
+  } catch {
+    return res.json({ error: "Invalid JSON payload." }, 400);
+  }
+
+  const { applicationId, chosenReviewId, chosenRating } = body;
+
+  if (!applicationId || typeof applicationId !== "string") {
+    return res.json({ error: "Missing applicationId." }, 400);
+  }
+
+  if (!chosenReviewId || typeof chosenReviewId !== "string") {
+    return res.json({ error: "Missing chosenReviewId." }, 400);
+  }
+
+  if (typeof chosenRating !== "number" || chosenRating < 0 || chosenRating > 100) {
+    return res.json({ error: "Invalid rating." }, 400);
+  }
+
   const isAdmin = await verifyAdminRole(userId, log);
   if (!isAdmin) {
     return res.json({ error: "Insufficient permissions." }, 403);
@@ -71,58 +92,37 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
-    const reviews = await databases.listDocuments(
+    const chosenReview = await databases.getDocument(
       DATABASE_ID,
       REVIEWS_COLLECTION_ID,
-      [
-        Query.orderDesc("reviewedAt"),
-        Query.limit(50),
-      ]
+      chosenReviewId
     );
 
-    const formatted = reviews.documents.map((doc) => ({
-      id: doc.$id,
-      applicationId: doc.applicationId,
-      moderatorUserId: doc.moderatorUserId,
-      moderatorDiscordId: doc.moderatorDiscordId,
-      moderatorDiscordUsername: doc.moderatorDiscordUsername,
-      rating: doc.rating,
-      ratingZone: doc.ratingZone,
-      moderatorNote: doc.moderatorNote || null,
-      reviewedAt: doc.reviewedAt,
-      application: null,
-    }));
+    const application = await databases.getDocument(
+      DATABASE_ID,
+      APPLICATIONS_COLLECTION_ID,
+      applicationId
+    );
 
-    const applicationIds = [...new Set(formatted.map((r) => r.applicationId).filter(Boolean))];
-    if (applicationIds.length > 0) {
-      const applications = await databases.listDocuments(
-        DATABASE_ID,
-        APPLICATIONS_COLLECTION_ID,
-        [Query.equal("$id", applicationIds), Query.limit(100)]
-      );
+    const ratingZone = chosenRating <= 25 ? "red" : chosenRating <= 50 ? "orange" : chosenRating <= 75 ? "yellow" : "green";
 
-      const appMap = new Map();
-      for (const app of applications.documents) {
-        appMap.set(app.$id, {
-          id: app.$id,
-          minecraftIGN: app.minecraftIGN || "",
-          discordUsername: app.discordUsername || "",
-          discordId: app.discordId || "",
-          timezone: app.timezone || "",
-          status: app.status || "",
-          createdAt: app.createdAt || "",
-          skinUrl: `https://mc-heads.net/body/${encodeURIComponent(app.minecraftIGN || "")}`,
-        });
+    await databases.updateDocument(
+      DATABASE_ID,
+      APPLICATIONS_COLLECTION_ID,
+      applicationId,
+      {
+        rating: chosenRating,
+        ratingZone,
+        reviewerOverridden: true,
+        overriddenBy: userId,
       }
+    );
 
-      for (const review of formatted) {
-        review.application = appMap.get(review.applicationId) || null;
-      }
-    }
+    log(`Conflict resolved for ${applicationId}: admin chose ${chosenReviewId} (${chosenRating}%)`);
 
-    return res.json({ reviews: formatted, total: reviews.total });
+    return res.json({ success: true });
   } catch (e) {
-    error("Failed to fetch reviews:", e.message);
-    return res.json({ error: "Failed to load reviews." }, 500);
+    error("Failed to resolve conflict:", e.message);
+    return res.json({ error: "Failed to resolve." }, 500);
   }
 };

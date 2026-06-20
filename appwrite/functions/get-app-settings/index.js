@@ -4,8 +4,7 @@ const ENDPOINT          = process.env.APPWRITE_ENDPOINT;
 const PROJECT_ID        = process.env.APPWRITE_PROJECT_ID;
 const API_KEY           = process.env.APPWRITE_API_KEY;
 const DATABASE_ID       = process.env.APPWRITE_DATABASE_ID;
-const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_ID;
-const REVIEWS_COLLECTION_ID = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
+const SETTINGS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN      = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID       = process.env.DISCORD_GUILD_ID;
 const ADMIN_ROLE_ID           = process.env.ADMIN_ROLE_ID;
@@ -71,58 +70,26 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
-    const reviews = await databases.listDocuments(
-      DATABASE_ID,
-      REVIEWS_COLLECTION_ID,
-      [
-        Query.orderDesc("reviewedAt"),
-        Query.limit(50),
-      ]
-    );
-
-    const formatted = reviews.documents.map((doc) => ({
-      id: doc.$id,
-      applicationId: doc.applicationId,
-      moderatorUserId: doc.moderatorUserId,
-      moderatorDiscordId: doc.moderatorDiscordId,
-      moderatorDiscordUsername: doc.moderatorDiscordUsername,
-      rating: doc.rating,
-      ratingZone: doc.ratingZone,
-      moderatorNote: doc.moderatorNote || null,
-      reviewedAt: doc.reviewedAt,
-      application: null,
-    }));
-
-    const applicationIds = [...new Set(formatted.map((r) => r.applicationId).filter(Boolean))];
-    if (applicationIds.length > 0) {
-      const applications = await databases.listDocuments(
+    let settings;
+    try {
+      settings = await databases.getDocument(
         DATABASE_ID,
-        APPLICATIONS_COLLECTION_ID,
-        [Query.equal("$id", applicationIds), Query.limit(100)]
+        SETTINGS_COLLECTION_ID,
+        "global"
       );
-
-      const appMap = new Map();
-      for (const app of applications.documents) {
-        appMap.set(app.$id, {
-          id: app.$id,
-          minecraftIGN: app.minecraftIGN || "",
-          discordUsername: app.discordUsername || "",
-          discordId: app.discordId || "",
-          timezone: app.timezone || "",
-          status: app.status || "",
-          createdAt: app.createdAt || "",
-          skinUrl: `https://mc-heads.net/body/${encodeURIComponent(app.minecraftIGN || "")}`,
-        });
-      }
-
-      for (const review of formatted) {
-        review.application = appMap.get(review.applicationId) || null;
-      }
+    } catch {
+      settings = {
+        appsPaused: false,
+        doubleReviewEnabled: false,
+      };
     }
 
-    return res.json({ reviews: formatted, total: reviews.total });
+    return res.json({
+      appsPaused: settings.appsPaused || false,
+      doubleReviewEnabled: settings.doubleReviewEnabled || false,
+    });
   } catch (e) {
-    error("Failed to fetch reviews:", e.message);
-    return res.json({ error: "Failed to load reviews." }, 500);
+    error("Failed to fetch settings:", e.message);
+    return res.json({ error: "Failed to load settings." }, 500);
   }
 };
