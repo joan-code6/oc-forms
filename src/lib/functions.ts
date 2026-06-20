@@ -1,5 +1,5 @@
 import { Functions, ExecutionStatus } from "appwrite"
-import { getClient, getAccount } from "@/lib/appwrite"
+import { getClient } from "@/lib/appwrite"
 
 const functions = new Functions(getClient())
 
@@ -7,21 +7,6 @@ export async function callFunction<T = unknown>(
   functionId: string,
   body?: Record<string, unknown>
 ): Promise<T> {
-  const client = getClient()
-
-  try {
-    const account = getAccount()
-    const jwt = await account.createJWT()
-    if (jwt?.jwt) {
-      client.setJWT(jwt.jwt)
-      console.log("[callFunction] JWT set successfully")
-    } else {
-      console.warn("[callFunction] createJWT returned no jwt value")
-    }
-  } catch (e) {
-    console.warn("[callFunction] createJWT failed:", e)
-  }
-
   const res = await functions.createExecution({
     functionId,
     body: body ? JSON.stringify(body) : undefined,
