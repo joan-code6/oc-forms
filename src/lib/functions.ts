@@ -1,23 +1,19 @@
-import { ExecutionStatus } from "appwrite"
-import { getAccount } from "@/lib/appwrite"
+import { Functions, ExecutionStatus } from "appwrite"
+import { getClient, getAccount } from "@/lib/appwrite"
 
-const ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT || "https://cloud.appwrite.io/v1"
-const PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID || ""
+const functions = new Functions(getClient())
 
 export async function callFunction<T = unknown>(
   functionId: string,
   body?: Record<string, unknown>
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    "X-Appwrite-Project": PROJECT_ID,
-    "Content-Type": "application/json",
-  }
+  const client = getClient()
 
   try {
     const account = getAccount()
     const jwt = await account.createJWT()
     if (jwt?.jwt) {
-      headers["X-Appwrite-JWT"] = jwt.jwt
+      client.setJWT(jwt.jwt)
       console.log("[callFunction] JWT set successfully")
     } else {
       console.warn("[callFunction] createJWT returned no jwt value")
@@ -26,33 +22,29 @@ export async function callFunction<T = unknown>(
     console.warn("[callFunction] createJWT failed:", e)
   }
 
-  const res = await fetch(`${ENDPOINT}/functions/${functionId}/executions`, {
-    method: "POST",
-    headers,
-    credentials: "include",
+  const res = await functions.createExecution({
+    functionId,
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  const data = await res.json()
-
-  if (data.status === ExecutionStatus.Failed) {
-    throw new Error(data.errors || "Function execution failed.")
+  if (res.status === ExecutionStatus.Failed) {
+    throw new Error(res.errors || "Function execution failed.")
   }
 
-  if (data.status !== ExecutionStatus.Completed) {
-    throw new Error(`Function execution did not complete (status: ${data.status}).`)
+  if (res.status !== ExecutionStatus.Completed) {
+    throw new Error(`Function execution did not complete (status: ${res.status}).`)
   }
 
-  if (data.responseStatusCode >= 400) {
-    const message = extractErrorMessage(data.responseBody, data.responseStatusCode)
+  if (res.responseStatusCode >= 400) {
+    const message = extractErrorMessage(res.responseBody, res.responseStatusCode)
     throw new Error(message)
   }
 
-  if (!data.responseBody) {
+  if (!res.responseBody) {
     throw new Error("No response from server.")
   }
 
-  return JSON.parse(data.responseBody) as T
+  return JSON.parse(res.responseBody) as T
 }
 
 function extractErrorMessage(body: string, statusCode: number): string {
