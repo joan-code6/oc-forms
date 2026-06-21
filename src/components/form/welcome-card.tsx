@@ -15,7 +15,7 @@ export function WelcomeCard({ user, loading, error, onLogin }: WelcomeCardProps)
     <div className="space-y-6">
       <div className="flex flex-col items-center justify-center text-center">
         <img
-          src="public/OC_Underground_logo.png"
+          src="/OC_Underground_logo.png"
           alt="OutCraft Logo"
           className="w-72 object-contain sm:w-96"
         />
