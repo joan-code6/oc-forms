@@ -81,12 +81,14 @@ module.exports = async function (context) {
       settings = {
         appsPaused: false,
         doubleReviewEnabled: false,
+        conflictThreshold: 30,
       };
     }
 
     return res.json({
       appsPaused: settings.appsPaused || false,
       doubleReviewEnabled: settings.doubleReviewEnabled || false,
+      conflictThreshold: typeof settings.conflictThreshold === "number" ? settings.conflictThreshold : 30,
     });
   } catch (e) {
     error("Failed to fetch settings:", e.message);

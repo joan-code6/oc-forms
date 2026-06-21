@@ -10,6 +10,7 @@ import { ModeratorAuditPage } from "@/pages/moderator-audit"
 import { ModeratorAuditDetailPage } from "@/pages/moderator-audit-detail"
 import { ModeratorSettingsPage } from "@/pages/moderator-settings"
 import { ModeratorConflictsPage } from "@/pages/moderator-conflicts"
+import { ModeratorConflictDetailPage } from "@/pages/moderator-conflict-detail"
 import { NoAccessPage } from "@/pages/no-access"
 import { PreviewImagesPage } from "@/pages/preview-images"
 
@@ -35,6 +36,7 @@ export default function App() {
                 <Route path="/moderator/audit/:id" element={<ModeratorAuditDetailPage />} />
                 <Route path="/moderator/settings" element={<ModeratorSettingsPage />} />
                 <Route path="/moderator/conflicts" element={<ModeratorConflictsPage />} />
+                <Route path="/moderator/conflicts/:applicationId" element={<ModeratorConflictDetailPage />} />
                 <Route path="/no-access" element={<NoAccessPage />} />
                 <Route path="/preview-images" element={<PreviewImagesPage />} />
               </Routes>

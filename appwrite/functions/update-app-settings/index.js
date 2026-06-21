@@ -88,6 +88,7 @@ module.exports = async function (context) {
       settings = {
         appsPaused: false,
         doubleReviewEnabled: false,
+        conflictThreshold: 30,
       };
 
       try {
@@ -108,6 +109,12 @@ module.exports = async function (context) {
     }
     if (typeof body.doubleReviewEnabled === "boolean") {
       updateData.doubleReviewEnabled = body.doubleReviewEnabled;
+    }
+    if (typeof body.conflictThreshold === "number") {
+      const val = Math.round(body.conflictThreshold);
+      if (val >= 1 && val <= 100) {
+        updateData.conflictThreshold = val;
+      }
     }
 
     if (Object.keys(updateData).length === 0) {

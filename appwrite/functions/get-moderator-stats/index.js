@@ -77,28 +77,34 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
-    const openApps = await databases.listDocuments(
+    const pendingApps = await databases.listDocuments(
       DATABASE_ID,
       APPLICATIONS_COLLECTION_ID,
       [Query.equal("status", "pending")]
     );
 
-    const closedApps = await databases.listDocuments(
+    const pending2ndApps = await databases.listDocuments(
       DATABASE_ID,
       APPLICATIONS_COLLECTION_ID,
-      [Query.notEqual("status", "pending")]
+      [Query.equal("status", "pending_2nd")]
     );
 
-    const closedByYou = await databases.listDocuments(
+    const reviewedApps = await databases.listDocuments(
+      DATABASE_ID,
+      APPLICATIONS_COLLECTION_ID,
+      [Query.equal("status", "reviewed")]
+    );
+
+    const reviewedByYou = await databases.listDocuments(
       DATABASE_ID,
       REVIEWS_COLLECTION_ID,
       [Query.equal("moderatorUserId", userId)]
     );
 
     return res.json({
-      openApplications: openApps.total,
-      totalClosed: closedApps.total,
-      closedByYou: closedByYou.total,
+      openApplications: pendingApps.total + pending2ndApps.total,
+      totalClosed: reviewedApps.total,
+      reviewedByYou: reviewedByYou.total,
     });
   } catch (e) {
     error("Failed to fetch moderator stats:", e.message);

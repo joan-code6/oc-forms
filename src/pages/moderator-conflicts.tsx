@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ArrowLeft, AlertTriangle, Gavel } from "lucide-react"
+import { ArrowLeft, AlertTriangle, Gavel, Eye } from "lucide-react"
 
 const CONFLICTS_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_CONFLICTS_ID || "get-review-conflicts"
@@ -34,6 +34,7 @@ interface ConflictGroup {
 interface ConflictsResult {
   conflicts: ConflictGroup[]
   total: number
+  conflictThreshold: number
 }
 
 interface ResolveResult {
@@ -65,6 +66,7 @@ export function ModeratorConflictsPage() {
   const [chosenReview, setChosenReview] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [conflictThreshold, setConflictThreshold] = useState<number>(30)
 
   useEffect(() => {
     if (!allowed) return
@@ -73,6 +75,7 @@ export function ModeratorConflictsPage() {
       .then((result) => {
         if (!cancelled) {
           setConflicts(result.conflicts)
+          setConflictThreshold(result.conflictThreshold)
         }
       })
       .catch((e) => {
@@ -124,6 +127,7 @@ export function ModeratorConflictsPage() {
         </Button>
         <h1 className="text-2xl font-bold text-white">Conflicts</h1>
         <Gavel className="h-5 w-5 text-yellow-400" />
+        <span className="text-xs text-white/40 ml-2">(threshold: {conflictThreshold}%)</span>
       </div>
 
       {loadError && (
@@ -185,20 +189,31 @@ export function ModeratorConflictsPage() {
                     <span className="text-white/50">(spread: {conflict.ratingSpread}%)</span>
                   </div>
 
-                  {resolvingApp === conflict.applicationId && chosenReview && (
-                    <div className="flex items-center gap-2">
-                      {saveError && (
-                        <span className="text-xs text-red-400">{saveError}</span>
-                      )}
-                      <Button
-                        size="sm"
-                        disabled={saving}
-                        onClick={() => handleResolve(conflict.applicationId, chosenReview)}
-                      >
-                        {saving ? "Resolving..." : "Override with this rating"}
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/moderator/conflicts/${conflict.applicationId}`)}
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-1" />
+                      Custom Review
+                    </Button>
+
+                    {resolvingApp === conflict.applicationId && chosenReview && (
+                      <>
+                        {saveError && (
+                          <span className="text-xs text-red-400">{saveError}</span>
+                        )}
+                        <Button
+                          size="sm"
+                          disabled={saving}
+                          onClick={() => handleResolve(conflict.applicationId, chosenReview)}
+                        >
+                          {saving ? "Resolving..." : "Override with this rating"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

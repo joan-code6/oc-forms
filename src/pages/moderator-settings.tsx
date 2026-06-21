@@ -2,10 +2,11 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ArrowLeft, AlertTriangle, ShieldCheck } from "lucide-react"
+import { ArrowLeft, AlertTriangle, ShieldCheck, Save } from "lucide-react"
 
 const GET_SETTINGS_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_SETTINGS_ID || "get-app-settings"
@@ -15,6 +16,7 @@ const UPDATE_SETTINGS_FUNCTION_ID =
 interface SettingsData {
   appsPaused: boolean
   doubleReviewEnabled: boolean
+  conflictThreshold: number
 }
 
 export function ModeratorSettingsPage() {
@@ -26,13 +28,18 @@ export function ModeratorSettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [thresholdValue, setThresholdValue] = useState<string>("")
+  const [thresholdSaving, setThresholdSaving] = useState(false)
 
   useEffect(() => {
     if (!allowed) return
     let cancelled = false
     callFunction<SettingsData>(GET_SETTINGS_FUNCTION_ID)
       .then((result) => {
-        if (!cancelled) setSettings(result)
+        if (!cancelled) {
+          setSettings(result)
+          setThresholdValue(String(result.conflictThreshold))
+        }
       })
       .catch((e) => {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : "Failed to load settings.")
@@ -63,6 +70,32 @@ export function ModeratorSettingsPage() {
       setSaveError(e instanceof Error ? e.message : "Failed to save.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const saveThreshold = async () => {
+    if (!settings) return
+    const parsed = parseInt(thresholdValue, 10)
+    if (isNaN(parsed) || parsed < 1 || parsed > 100) {
+      setSaveError("Threshold must be between 1 and 100.")
+      return
+    }
+    setThresholdSaving(true)
+    setSaveError(null)
+    try {
+      const result = await callFunction<{ success: boolean; error?: string }>(
+        UPDATE_SETTINGS_FUNCTION_ID,
+        { conflictThreshold: parsed }
+      )
+      if (result.success) {
+        setSettings({ ...settings, conflictThreshold: parsed })
+      } else {
+        setSaveError(result.error || "Failed to update threshold.")
+      }
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed to save threshold.")
+    } finally {
+      setThresholdSaving(false)
     }
   }
 
@@ -129,6 +162,40 @@ export function ModeratorSettingsPage() {
               </Button>
             </CardContent>
           </Card>
+
+          {settings.doubleReviewEnabled && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-white">Conflict Threshold</p>
+                    <p className="text-xs text-white/40">
+                      Minimum rating difference (1-100%) to flag as a conflict.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={thresholdValue}
+                      onChange={(e) => setThresholdValue(e.target.value)}
+                      className="w-20 text-right"
+                      disabled={thresholdSaving}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={thresholdSaving || thresholdValue === String(settings.conflictThreshold)}
+                      onClick={saveThreshold}
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {saveError && (
             <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">

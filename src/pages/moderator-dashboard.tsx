@@ -16,7 +16,7 @@ const NEXT_APP_FUNCTION_ID =
 interface StatsResult {
   openApplications: number
   totalClosed: number
-  closedByYou: number
+  reviewedByYou: number
 }
 
 interface NextAppResult {
@@ -137,9 +137,9 @@ export function ModeratorDashboardPage() {
         </Card>
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-sm text-white/50">Closed By You</p>
+            <p className="text-sm text-white/50">Reviewed by You</p>
             <p className="mt-1 text-3xl font-bold text-white">
-              {loadingStats ? "..." : stats?.closedByYou ?? "—"}
+              {loadingStats ? "..." : stats?.reviewedByYou ?? "—"}
             </p>
           </CardContent>
         </Card>

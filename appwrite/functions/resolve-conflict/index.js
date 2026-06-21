@@ -6,6 +6,7 @@ const API_KEY           = process.env.APPWRITE_API_KEY;
 const DATABASE_ID       = process.env.APPWRITE_DATABASE_ID;
 const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_ID;
 const REVIEWS_COLLECTION_ID     = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
+const OVERWRITES_COLLECTION_ID = "6a3802542e74947140f0";
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
 const ADMIN_ROLE_ID      = process.env.ADMIN_ROLE_ID;
@@ -69,7 +70,7 @@ module.exports = async function (context) {
     return res.json({ error: "Invalid JSON payload." }, 400);
   }
 
-  const { applicationId, chosenReviewId, chosenRating } = body;
+  const { applicationId, chosenReviewId, chosenRating, moderatorNote } = body;
 
   if (!applicationId || typeof applicationId !== "string") {
     return res.json({ error: "Missing applicationId." }, 400);
@@ -92,33 +93,71 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
-    const chosenReview = await databases.getDocument(
+    const ratingZone = chosenRating <= 25 ? "red" : chosenRating <= 50 ? "orange" : chosenRating <= 75 ? "yellow" : "green";
+    const now = new Date().toISOString();
+
+    // Create review_overwrites document
+    const overwriteData = {
+      applicationId,
+      overwriterUserId: userId,
+      rating: chosenRating,
+      ratingZone,
+      overwrittenAt: now,
+    };
+    if (moderatorNote && typeof moderatorNote === "string" && moderatorNote.trim()) {
+      overwriteData.note = moderatorNote.trim();
+    }
+
+    const overwriteDoc = await databases.createDocument(
+      DATABASE_ID,
+      OVERWRITES_COLLECTION_ID,
+      "unique()",
+      overwriteData
+    );
+
+    // Mark all moderator reviews for this app as overwritten
+    const allReviews = await databases.listDocuments(
       DATABASE_ID,
       REVIEWS_COLLECTION_ID,
-      chosenReviewId
+      [
+        Query.equal("applicationId", applicationId),
+        Query.limit(10),
+      ]
     );
 
-    const application = await databases.getDocument(
-      DATABASE_ID,
-      APPLICATIONS_COLLECTION_ID,
-      applicationId
-    );
+    for (const review of allReviews.documents) {
+      try {
+        await databases.updateDocument(
+          DATABASE_ID,
+          REVIEWS_COLLECTION_ID,
+          review.$id,
+          { overwrittenBy: overwriteDoc.$id }
+        );
+      } catch (updateErr) {
+        log(`Failed to mark review ${review.$id} as overwritten:`, updateErr.message);
+      }
+    }
 
-    const ratingZone = chosenRating <= 25 ? "red" : chosenRating <= 50 ? "orange" : chosenRating <= 75 ? "yellow" : "green";
+    // Update application with final rating and status
+    const appUpdateData = {
+      rating: chosenRating,
+      ratingZone,
+      status: "reviewed",
+      reviewedAt: now,
+    };
+
+    if (moderatorNote && typeof moderatorNote === "string" && moderatorNote.trim()) {
+      appUpdateData.moderatorNote = moderatorNote.trim();
+    }
 
     await databases.updateDocument(
       DATABASE_ID,
       APPLICATIONS_COLLECTION_ID,
       applicationId,
-      {
-        rating: chosenRating,
-        ratingZone,
-        reviewerOverridden: true,
-        overriddenBy: userId,
-      }
+      appUpdateData
     );
 
-    log(`Conflict resolved for ${applicationId}: admin chose ${chosenReviewId} (${chosenRating}%)`);
+    log(`Conflict resolved for ${applicationId}: admin ${userId} (${chosenRating}%)`);
 
     return res.json({ success: true });
   } catch (e) {

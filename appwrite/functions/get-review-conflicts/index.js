@@ -5,10 +5,10 @@ const PROJECT_ID        = process.env.APPWRITE_PROJECT_ID;
 const API_KEY           = process.env.APPWRITE_API_KEY;
 const DATABASE_ID       = process.env.APPWRITE_DATABASE_ID;
 const REVIEWS_COLLECTION_ID = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
+const SETTINGS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN      = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID       = process.env.DISCORD_GUILD_ID;
 const ADMIN_ROLE_ID           = process.env.ADMIN_ROLE_ID;
-const CONFLICT_THRESHOLD      = process.env.CONFLICT_THRESHOLD || "30";
 
 function getServerClient() {
   const client = new Client();
@@ -71,6 +71,20 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
+    let threshold = 30;
+    try {
+      const settings = await databases.getDocument(
+        DATABASE_ID,
+        SETTINGS_COLLECTION_ID,
+        "global"
+      );
+      if (typeof settings.conflictThreshold === "number") {
+        threshold = settings.conflictThreshold;
+      }
+    } catch {
+      // Use default threshold of 30
+    }
+
     const allReviews = await databases.listDocuments(
       DATABASE_ID,
       REVIEWS_COLLECTION_ID,
@@ -94,14 +108,17 @@ module.exports = async function (context) {
         moderatorDiscordId: review.moderatorDiscordId,
         moderatorNote: review.moderatorNote || null,
         reviewedAt: review.reviewedAt,
+        overwrittenBy: review.overwrittenBy || null,
       });
     }
 
-    const threshold = parseInt(CONFLICT_THRESHOLD, 10);
     const conflicts = [];
 
     for (const [appId, reviews] of Object.entries(byApp)) {
       if (reviews.length < 2) continue;
+
+      // Skip apps that have been overwritten
+      if (reviews.some((r) => r.overwrittenBy)) continue;
 
       const ratings = reviews.map((r) => r.rating);
       const min = Math.min(...ratings);
@@ -121,7 +138,7 @@ module.exports = async function (context) {
 
     conflicts.sort((a, b) => b.ratingSpread - a.ratingSpread);
 
-    return res.json({ conflicts, total: conflicts.length });
+    return res.json({ conflicts, total: conflicts.length, conflictThreshold: threshold });
   } catch (e) {
     error("Failed to find conflicts:", e.message);
     return res.json({ error: "Failed to load conflicts." }, 500);
