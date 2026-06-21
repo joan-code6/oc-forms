@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Loader2 } from "lucide-react"
-import { useAppwriteAuth } from "@/hooks/use-appwrite-auth"
+import { getAccount } from "@/lib/appwrite"
 
 function getReturnPath(searchParams: URLSearchParams): string {
   const urlReturnTo = searchParams.get("returnTo")
@@ -18,39 +18,44 @@ function getReturnPath(searchParams: URLSearchParams): string {
 }
 
 export function AuthCallback() {
-  const { user, loading, error, refetch } = useAppwriteAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const redirected = useRef(false)
   const returnPath = useRef(getReturnPath(searchParams))
+  const [status, setStatus] = useState<"loading" | "done" | "error">("loading")
+  const processed = useRef(false)
 
   useEffect(() => {
-    refetch()
-  }, [refetch])
+    if (processed.current) return
+    processed.current = true
 
-  useEffect(() => {
-    if (loading) return
-    if (redirected.current) return
+    const userId = searchParams.get("userId")
+    const secret = searchParams.get("secret")
 
-    redirected.current = true
-    if (user) {
-      navigate(returnPath.current, { replace: true })
+    if (userId && secret) {
+      getAccount()
+        .createSession({ userId, secret })
+        .then(() => {
+          navigate(returnPath.current, { replace: true })
+        })
+        .catch(() => {
+          setStatus("error")
+        })
     } else {
       navigate(returnPath.current, { replace: true })
     }
-  }, [loading, user, navigate])
+  }, [searchParams, navigate])
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (loading && !redirected.current) {
-        redirected.current = true
+      if (status === "loading" && !processed.current) {
+        processed.current = true
         navigate(returnPath.current, { replace: true })
       }
-    }, 8000)
+    }, 10000)
     return () => clearTimeout(timer)
-  }, [loading, navigate])
+  }, [status, navigate])
 
-  if (loading) {
+  if (status === "loading") {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-brand" />
@@ -59,10 +64,10 @@ export function AuthCallback() {
     )
   }
 
-  if (error) {
+  if (status === "error") {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
-        <p className="text-red-400">Authentication failed: {error}</p>
+        <p className="text-red-400">Authentication failed. Please try again.</p>
         <button
           onClick={() => navigate(returnPath.current, { replace: true })}
           className="mt-2 rounded-md bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
