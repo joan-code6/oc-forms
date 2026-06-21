@@ -22,9 +22,12 @@ export function getAccount(): Account {
 }
 
 export function discordLogin(returnTo?: string) {
-  const redirectUrl = `${window.location.origin}/auth/callback`
   const stateParam = returnTo || window.location.pathname
-  sessionStorage.setItem("auth_return_to", stateParam)
+  const redirectUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(stateParam)}`
+  try {
+    sessionStorage.setItem("auth_return_to", stateParam)
+    localStorage.setItem("auth_return_to", stateParam)
+  } catch { /* ignore */ }
   const acc = getAccount()
   acc.createOAuth2Session(OAuthProvider.Discord, redirectUrl, redirectUrl)
 }

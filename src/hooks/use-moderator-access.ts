@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAppwriteAuth } from "@/hooks/use-appwrite-auth"
 import { discordLogin } from "@/lib/appwrite"
@@ -30,12 +30,16 @@ export function useModeratorAccess(): ModeratorAccessState {
     discordUsername: null,
   })
   const navigate = useNavigate()
+  const loginAttempted = useRef(false)
 
   useEffect(() => {
     if (authLoading) return
 
     if (!user) {
-      discordLogin(window.location.pathname)
+      if (!loginAttempted.current) {
+        loginAttempted.current = true
+        discordLogin(window.location.pathname)
+      }
       return
     }
 

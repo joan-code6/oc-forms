@@ -38,7 +38,7 @@
     font-family: var(--font-sans);
     background-color: oklch(0.1 0.02 280);
     background-image: radial-gradient(ellipse 80% 60% at 50% 30%, oklch(0.25 0.12 290 / 0.5) 0%, oklch(0.12 0.06 310 / 0.3) 50%, transparent 80%);
-    background-attachment: fixed;
+    background-attachment: scroll;
     color: oklch(0.92 0.01 290);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -89,5 +89,34 @@
 
   .submit-glow {
     animation: glow-pulse 2.5s ease-in-out infinite;
+  }
+
+  .moderator-range-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .moderator-range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .moderator-range-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
 }

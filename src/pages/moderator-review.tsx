@@ -209,7 +209,7 @@ export function ModeratorReviewPage() {
           ))}
         </div>
 
-        <div className="space-y-4 md:sticky md:top-12 md:self-start">
+        <div className="space-y-4 sm:sticky sm:top-12 sm:self-start">
           <Card>
             <CardContent className="p-6 flex flex-col items-center gap-4">
               <img
@@ -284,12 +284,15 @@ export function ModeratorReviewPage() {
                 max={100}
                 value={rating ?? 50}
                 onChange={(e) => handleSliderChange(Number(e.target.value))}
-                className="w-full"
+                onTouchEnd={(e) => {
+                  const target = e.target as HTMLInputElement
+                  handleSliderChange(Number(target.value))
+                }}
+                className="moderator-range-slider w-full"
                 style={{
                   background: getSliderBackground(),
                   height: "8px",
                   borderRadius: "4px",
-                  appearance: "none",
                   cursor: "pointer",
                 }}
               />

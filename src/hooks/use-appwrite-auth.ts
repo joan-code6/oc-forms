@@ -17,7 +17,10 @@ export function useAppwriteAuth() {
 
   const checkSession = useCallback(async () => {
     try {
-      const session = await getSession()
+      const session = await Promise.race([
+        getSession(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+      ])
       if (!session) {
         setUser(null)
         setLoading(false)
@@ -47,7 +50,10 @@ export function useAppwriteAuth() {
     let cancelled = false
     const run = async () => {
       try {
-        const session = await getSession()
+        const session = await Promise.race([
+          getSession(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+        ])
         if (cancelled) return
         if (!session) {
           setUser(null)
