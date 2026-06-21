@@ -6,7 +6,7 @@ const API_KEY     = process.env.APPWRITE_API_KEY;
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
 const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_ID;
 const CLAIMS_COLLECTION_ID = process.env.APPWRITE_CLAIMS_COLLECTION_ID;
-const SETTINGS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
+
 const REVIEWS_COLLECTION_ID = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
@@ -20,22 +20,6 @@ function getServerClient() {
   const client = new Client();
   client.setEndpoint(ENDPOINT).setProject(PROJECT_ID).setKey(API_KEY);
   return client;
-}
-
-async function getSettings(databases) {
-  try {
-    const settings = await databases.getDocument(
-      DATABASE_ID,
-      SETTINGS_COLLECTION_ID,
-      "global"
-    );
-    return {
-      appsPaused: settings.appsPaused || false,
-      doubleReviewEnabled: settings.doubleReviewEnabled || false,
-    };
-  } catch {
-    return { appsPaused: false, doubleReviewEnabled: false };
-  }
 }
 
 async function verifyStaffRole(userId) {
@@ -219,10 +203,20 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
-    // Check settings
-    const settings = await getSettings(databases);
+    // Check if apps are paused
+    let appsPaused = false;
+    try {
+      const settingsDoc = await databases.getDocument(
+        DATABASE_ID,
+        "settings",
+        "global"
+      );
+      appsPaused = settingsDoc.appsPaused || false;
+    } catch {
+      // If settings unreadable, assume not paused
+    }
 
-    if (settings.appsPaused && !applicationId) {
+    if (appsPaused && !applicationId) {
       return res.json({ application: null, paused: true });
     }
 
@@ -240,10 +234,6 @@ module.exports = async function (context) {
       }
 
       if (doc.status === "reviewed" || doc.status === "closed") {
-        return res.json({ application: null, error: "Application already reviewed." });
-      }
-
-      if (doc.status === "pending_2nd" && !settings.doubleReviewEnabled) {
         return res.json({ application: null, error: "Application already reviewed." });
       }
 
@@ -265,9 +255,8 @@ module.exports = async function (context) {
 
       // If no claim exists and app is pending, claim it atomically
       if (!existingClaim && (doc.status === "pending" || doc.status === "pending_2nd")) {
-        // If double review is on and app is pending_2nd,
-        // check if this moderator already reviewed it
-        if (settings.doubleReviewEnabled && doc.status === "pending_2nd") {
+        // If app is pending_2nd, check if this moderator already reviewed it
+        if (doc.status === "pending_2nd") {
           try {
             const existingReviews = await databases.listDocuments(
               DATABASE_ID,
@@ -431,7 +420,7 @@ module.exports = async function (context) {
       );
       doc = pendingResult.documents[0] || null;
 
-      if (!doc && settings.doubleReviewEnabled) {
+      if (!doc) {
         const secondResult = await databases.listDocuments(
           DATABASE_ID,
           APPLICATIONS_COLLECTION_ID,
@@ -448,9 +437,8 @@ module.exports = async function (context) {
         return res.json({ application: null });
       }
 
-      // If double review is on and app is pending_second_review,
-      // check if this moderator already reviewed it
-      if (settings.doubleReviewEnabled && doc.status === "pending_2nd") {
+      // If app is pending_2nd, check if this moderator already reviewed it
+      if (doc.status === "pending_2nd") {
         try {
           const existingReviews = await databases.listDocuments(
             DATABASE_ID,

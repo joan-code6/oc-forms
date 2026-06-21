@@ -338,6 +338,13 @@ function FormContent() {
         </div>
       )}
 
+      {!user && (
+        <div className="animate-in flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white/50">
+          <LogIn className="h-4 w-4 text-white/60" />
+          You must verify with Discord before you can submit.
+        </div>
+      )}
+
       {/* Navigation buttons */}
       {currentPage < TOTAL_PAGES ? (
         <div className="flex items-center justify-between gap-4">
@@ -389,12 +396,6 @@ function FormContent() {
         </div>
       )}
 
-      {!user && (
-        <div className="animate-in flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white/50">
-          <LogIn className="h-4 w-4 text-white/60" />
-          You must verify with Discord before you can submit.
-        </div>
-      )}
     </div>
   )
 }

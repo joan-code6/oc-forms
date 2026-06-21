@@ -7,7 +7,6 @@ const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
 const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_ID;
 const CLAIMS_COLLECTION_ID       = process.env.APPWRITE_CLAIMS_COLLECTION_ID;
 const REVIEWS_COLLECTION_ID      = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
-const SETTINGS_COLLECTION_ID     = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
 const DISCORD_STAFF_ROLE_ID = process.env.DISCORD_STAFF_ROLE_ID;
@@ -25,21 +24,6 @@ function getRatingZone(value) {
   if (value <= 50) return "orange";
   if (value <= 75) return "yellow";
   return "green";
-}
-
-async function getSettings(databases) {
-  try {
-    const settings = await databases.getDocument(
-      DATABASE_ID,
-      SETTINGS_COLLECTION_ID,
-      "global"
-    );
-    return {
-      doubleReviewEnabled: settings.doubleReviewEnabled || false,
-    };
-  } catch {
-    return { doubleReviewEnabled: false };
-  }
 }
 
 async function getReviewCount(databases, applicationId) {
@@ -147,13 +131,7 @@ module.exports = async function (context) {
       return res.json({ success: false, error: "Application not found." }, 404);
     }
 
-    const settings = await getSettings(databases);
-
     if (application.status === "reviewed" || application.status === "closed") {
-      return res.json({ success: false, error: "Application already reviewed." }, 409);
-    }
-
-    if (application.status === "pending_2nd" && !settings.doubleReviewEnabled) {
       return res.json({ success: false, error: "Application already reviewed." }, 409);
     }
 
@@ -171,8 +149,8 @@ module.exports = async function (context) {
       }
     }
 
-    // Prevent same moderator from reviewing the same app twice in double review mode
-    if (settings.doubleReviewEnabled) {
+    // Prevent same moderator from reviewing the same app twice
+    {
       const existingReviews = await databases.listDocuments(
         DATABASE_ID,
         REVIEWS_COLLECTION_ID,
@@ -188,6 +166,9 @@ module.exports = async function (context) {
     }
 
     const ratingZone = getRatingZone(rating);
+
+    // Check existing review count BEFORE creating the new review
+    const existingReviewCount = await getReviewCount(databases, applicationId);
 
     const reviewData = {
       applicationId,
@@ -210,13 +191,10 @@ module.exports = async function (context) {
       reviewData
     );
 
-    // Determine new status based on double review setting
+    // Determine new status: 1st review → pending_2nd, 2nd+ → reviewed
     let newStatus = "reviewed";
-    if (settings.doubleReviewEnabled) {
-      const existingReviewCount = await getReviewCount(databases, applicationId);
-      if (existingReviewCount === 0) {
-        newStatus = "pending_2nd";
-      }
+    if (existingReviewCount === 0) {
+      newStatus = "pending_2nd";
     }
 
     const appUpdateData = {

@@ -21,6 +21,16 @@ export function BackgroundSlideshow() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [nextIndex, setNextIndex] = useState(1)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)")
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
+
+  const blur = isMobile ? "blur(2px)" : "blur(6px)"
 
   const goToNext = useCallback(() => {
     setIsTransitioning(true)
@@ -43,7 +53,7 @@ export function BackgroundSlideshow() {
         className="absolute inset-0 bg-cover bg-center transition-opacity duration-2000"
         style={{
           backgroundImage: `url(${IMAGES[currentIndex]})`,
-          filter: "blur(6px) brightness(0.6) saturate(1.05)",
+          filter: `${blur} brightness(0.6) saturate(1.05)`,
           transform: "scale(1.1)",
           opacity: isTransitioning ? 0 : 1,
           transitionDuration: `${TRANSITION_DURATION}ms`,
@@ -53,7 +63,7 @@ export function BackgroundSlideshow() {
         className="absolute inset-0 bg-cover bg-center transition-opacity duration-2000"
         style={{
           backgroundImage: `url(${IMAGES[nextIndex]})`,
-          filter: "blur(6px) brightness(0.6) saturate(1.05)",
+          filter: `${blur} brightness(0.6) saturate(1.05)`,
           transform: "scale(1.1)",
           opacity: isTransitioning ? 1 : 0,
           transitionDuration: `${TRANSITION_DURATION}ms`,
