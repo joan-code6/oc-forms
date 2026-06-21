@@ -103,12 +103,8 @@ export function PreviewImagesPage() {
           Back to form
         </Button>
 
-        {/* Image name */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-black/60 px-4 py-2 text-sm text-white/80">
-          {IMAGES[currentIndex].name}
-          <span className="ml-2 text-white/40">
-            {currentIndex + 1} / {IMAGES.length}
-          </span>
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-white/40">
+          {currentIndex + 1} / {IMAGES.length}
         </div>
       </div>
 
