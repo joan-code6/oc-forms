@@ -12,12 +12,14 @@ interface VerifyResult {
   userId?: string
   discordId?: string
   discordUsername?: string
+  isAdmin?: boolean
 }
 
 export interface ModeratorAccessState {
   loading: boolean
   allowed: boolean
   denied: boolean
+  isAdmin: boolean
   discordUsername: string | null
 }
 
@@ -27,6 +29,7 @@ export function useModeratorAccess(): ModeratorAccessState {
     loading: true,
     allowed: false,
     denied: false,
+    isAdmin: false,
     discordUsername: null,
   })
   const navigate = useNavigate()
@@ -51,6 +54,7 @@ export function useModeratorAccess(): ModeratorAccessState {
           loading: false,
           allowed: result.allowed,
           denied: !result.allowed,
+          isAdmin: result.isAdmin ?? false,
           discordUsername: result.discordUsername ?? null,
         })
         if (!result.allowed) {
@@ -63,6 +67,7 @@ export function useModeratorAccess(): ModeratorAccessState {
           loading: false,
           allowed: false,
           denied: true,
+          isAdmin: false,
           discordUsername: null,
         })
         navigate("/no-access")

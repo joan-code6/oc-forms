@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ClipboardCheck, LogOut, AlertTriangle } from "lucide-react"
+import { ClipboardCheck, LogOut, AlertTriangle, BookOpen, Settings, ShieldAlert } from "lucide-react"
 import { useAppwriteAuth } from "@/hooks/use-appwrite-auth"
 
 const STATS_FUNCTION_ID =
@@ -24,7 +24,7 @@ interface NextAppResult {
 }
 
 export function ModeratorDashboardPage() {
-  const { allowed, loading: accessLoading, discordUsername } = useModeratorAccess()
+  const { allowed, loading: accessLoading, isAdmin, discordUsername } = useModeratorAccess()
   const { logoutUser } = useAppwriteAuth()
   const navigate = useNavigate()
 
@@ -171,6 +171,38 @@ export function ModeratorDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {isAdmin && (
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Admin</p>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/moderator/audit")}
+            >
+              <BookOpen className="h-4 w-4" />
+              Audit Log
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/moderator/conflicts")}
+            >
+              <ShieldAlert className="h-4 w-4" />
+              Conflicts
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/moderator/settings")}
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

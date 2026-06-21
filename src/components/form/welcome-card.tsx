@@ -15,14 +15,13 @@ export function WelcomeCard({ user, loading, error, onLogin }: WelcomeCardProps)
     <div className="space-y-6">
       <div className="flex flex-col items-center justify-center text-center">
         <img
-          src="https://folder.outcraft.net/Outcraft-logo.png"
+          src="public/OC_Underground_logo.png"
           alt="OutCraft Logo"
-          className="w-48 object-contain sm:w-56"
+          className="w-72 object-contain sm:w-96"
         />
       </div>
 
       <Separator />
-
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight">Hello dear Players,</h2>
         <p className="text-sm leading-relaxed text-white/50">

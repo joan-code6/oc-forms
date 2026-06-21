@@ -6,6 +6,7 @@ const API_KEY           = process.env.APPWRITE_API_KEY;
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
 const DISCORD_STAFF_ROLE_ID = process.env.DISCORD_STAFF_ROLE_ID;
+const ADMIN_ROLE_ID = process.env.ADMIN_ROLE_ID;
 
 function getServerClient() {
   const client = new Client();
@@ -46,31 +47,35 @@ async function verifyStaffRole(userId, log) {
 
     if (!discordIdentity) {
       log("No Discord identity found for user");
-      return { isStaff: false };
+      return { isStaff: false, isAdmin: false };
     }
 
     const discordId = discordIdentity.providerUid;
     log("Discord ID:", discordId);
-    if (!discordId) return { isStaff: false };
+    if (!discordId) return { isStaff: false, isAdmin: false };
 
     const member = await getDiscordGuildMember(discordId);
     log("Discord member found:", !!member, "roles:", member?.roles);
 
-    if (!member || !member.roles) return { isStaff: false };
+    if (!member || !member.roles) return { isStaff: false, isAdmin: false };
 
     log("ENV_DISCORD_STAFF_ROLE_ID:", JSON.stringify(DISCORD_STAFF_ROLE_ID), "type:", typeof DISCORD_STAFF_ROLE_ID);
     log("User roles:", JSON.stringify(member.roles));
     const hasStaffRole = member.roles.includes(DISCORD_STAFF_ROLE_ID);
     log("hasStaffRole:", hasStaffRole);
 
+    const hasAdminRole = ADMIN_ROLE_ID ? member.roles.includes(ADMIN_ROLE_ID) : false;
+    log("hasAdminRole:", hasAdminRole);
+
     return {
       isStaff: hasStaffRole,
+      isAdmin: hasAdminRole,
       discordId,
       discordUsername: member.nick || member.user?.username || "",
     };
   } catch (e) {
     log("verifyStaffRole error:", e.message);
-    return { isStaff: false };
+    return { isStaff: false, isAdmin: false };
   }
 }
 
@@ -98,5 +103,6 @@ module.exports = async function (context) {
     userId,
     discordId: staffCheck.discordId,
     discordUsername: staffCheck.discordUsername,
+    isAdmin: staffCheck.isAdmin || false,
   });
 };

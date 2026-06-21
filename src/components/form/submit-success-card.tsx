@@ -1,5 +1,6 @@
-import { ArrowRight, Check, Loader2 } from "lucide-react"
+import { ArrowRight, Check, Loader2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useNavigate } from "react-router-dom"
 
 interface SubmitSuccessCardProps {
   isSubmitting: boolean
@@ -14,6 +15,8 @@ export function SubmitSuccessCard({
   disabled,
   onSubmit,
 }: SubmitSuccessCardProps) {
+  const navigate = useNavigate()
+
   if (submitted) {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-green-500/20 bg-green-500/[0.03] p-6 text-center sm:p-10">
@@ -27,6 +30,15 @@ export function SubmitSuccessCard({
         <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/50 sm:text-base">
           We will review your application and inform you when we have made our decision.
         </p>
+
+        <Button
+          onClick={() => navigate("/preview-images")}
+          variant="outline"
+          className="mt-6 gap-2"
+        >
+          <Eye className="h-4 w-4" />
+          Sneak peek of the maps
+        </Button>
 
         <p className="mt-6 text-xs text-white/30">
           You can close this page now. If you have any questions, reach out on the OutCraft Discord.

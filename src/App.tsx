@@ -11,6 +11,7 @@ import { ModeratorAuditDetailPage } from "@/pages/moderator-audit-detail"
 import { ModeratorSettingsPage } from "@/pages/moderator-settings"
 import { ModeratorConflictsPage } from "@/pages/moderator-conflicts"
 import { NoAccessPage } from "@/pages/no-access"
+import { PreviewImagesPage } from "@/pages/preview-images"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,8 +24,8 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <div className="min-h-screen">
-            <main className="py-10">
+          <div className="flex min-h-screen flex-col">
+            <main className="flex-1 py-10">
               <Routes>
                 <Route path="/" element={<FormPage />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
@@ -35,10 +36,11 @@ export default function App() {
                 <Route path="/moderator/settings" element={<ModeratorSettingsPage />} />
                 <Route path="/moderator/conflicts" element={<ModeratorConflictsPage />} />
                 <Route path="/no-access" element={<NoAccessPage />} />
+                <Route path="/preview-images" element={<PreviewImagesPage />} />
               </Routes>
             </main>
 
-            <footer className="border-t border-white/5 py-6 text-center">
+            <footer className="mt-auto border-t border-white/5 py-6 text-center">
               <p className="text-xs text-white/20">
                 OutCraft &copy; {new Date().getFullYear()}
               </p>

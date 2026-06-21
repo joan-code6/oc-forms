@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react"
+import { useCallback, useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -17,6 +17,7 @@ import { useMinecraftValidation } from "@/hooks/use-minecraft-validation"
 import { textQuestionPages, yesNoQuestions, dropdownQuestions } from "@/lib/questions"
 import { toast } from "sonner"
 import { LogIn, ArrowRight, ArrowLeft } from "lucide-react"
+import { BackgroundSlideshow } from "@/components/background-slideshow"
 
 const TOTAL_PAGES = 6
 
@@ -389,8 +390,8 @@ function FormContent() {
       )}
 
       {!user && (
-        <div className="animate-in flex items-center justify-center gap-2 rounded-lg border border-brand/20 bg-brand/5 px-4 py-3 text-center text-sm text-white/50">
-          <LogIn className="h-4 w-4 text-brand" />
+        <div className="animate-in flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white/50">
+          <LogIn className="h-4 w-4 text-white/60" />
           You must verify with Discord before you can submit.
         </div>
       )}
@@ -399,8 +400,25 @@ function FormContent() {
 }
 
 export function FormPage() {
+  const restoredRef = useRef(false)
+
+  useEffect(() => {
+    const body = document.body
+    const originalBg = body.style.backgroundImage
+    const originalColor = body.style.backgroundColor
+    body.style.backgroundColor = "#0a0a0a"
+    body.style.backgroundImage = "none"
+    return () => {
+      if (!restoredRef.current) {
+        body.style.backgroundImage = originalBg
+        body.style.backgroundColor = originalColor
+      }
+    }
+  }, [])
+
   return (
     <FormProvider>
+      <BackgroundSlideshow />
       <FormContent />
     </FormProvider>
   )

@@ -243,6 +243,10 @@ module.exports = async function (context) {
         return res.json({ application: null, error: "Application already reviewed." });
       }
 
+      if (doc.status === "pending_2nd" && !settings.doubleReviewEnabled) {
+        return res.json({ application: null, error: "Application already reviewed." });
+      }
+
       // Check if this moderator already has an active claim on this app
       let existingClaim = null;
       try {
@@ -260,7 +264,28 @@ module.exports = async function (context) {
       }
 
       // If no claim exists and app is pending, claim it atomically
-      if (!existingClaim && doc.status === "pending") {
+      if (!existingClaim && (doc.status === "pending" || doc.status === "pending_2nd")) {
+        // If double review is on and app is pending_2nd,
+        // check if this moderator already reviewed it
+        if (settings.doubleReviewEnabled && doc.status === "pending_2nd") {
+          try {
+            const existingReviews = await databases.listDocuments(
+              DATABASE_ID,
+              REVIEWS_COLLECTION_ID,
+              [
+                Query.equal("applicationId", applicationId),
+                Query.equal("moderatorUserId", userId),
+                Query.limit(1),
+              ]
+            );
+            if (existingReviews.total > 0) {
+              return res.json({ application: null, error: "You have already reviewed this application." });
+            }
+          } catch {
+            // If we can't check, proceed with claim
+          }
+        }
+
         const now = new Date().toISOString();
         try {
           await databases.createDocument(
@@ -270,6 +295,7 @@ module.exports = async function (context) {
             {
               moderatorUserId: userId,
               claimedAt: now,
+              originalStatus: doc.status,
             }
           );
         } catch {
@@ -329,11 +355,13 @@ module.exports = async function (context) {
           claim.$id
         );
         if (app.status === "in_review" && app.reviewedBy === userId) {
+          // Restore to the correct pending status
+          const restoreStatus = claim.originalStatus || "pending";
           await databases.updateDocument(
             DATABASE_ID,
             APPLICATIONS_COLLECTION_ID,
             claim.$id,
-            { status: "pending", reviewedBy: null, reviewStartedAt: null }
+            { status: restoreStatus, reviewedBy: null, reviewStartedAt: null }
           );
         }
       } catch {
@@ -366,11 +394,12 @@ module.exports = async function (context) {
           claim.$id
         );
         if (app.status === "in_review") {
+          const restoreStatus = claim.originalStatus || "pending";
           await databases.updateDocument(
             DATABASE_ID,
             APPLICATIONS_COLLECTION_ID,
             claim.$id,
-            { status: "pending", reviewedBy: null, reviewStartedAt: null }
+            { status: restoreStatus, reviewedBy: null, reviewStartedAt: null }
           );
         }
       } catch {
@@ -389,7 +418,9 @@ module.exports = async function (context) {
 
     // --- Claim next pending application ---
     for (let attempt = 0; attempt < MAX_CLAIM_RETRIES; attempt++) {
-      const result = await databases.listDocuments(
+      // First try pending apps, then pending_2nd if double review is enabled
+      let doc = null;
+      const pendingResult = await databases.listDocuments(
         DATABASE_ID,
         APPLICATIONS_COLLECTION_ID,
         [
@@ -398,10 +429,47 @@ module.exports = async function (context) {
           Query.limit(1),
         ]
       );
+      doc = pendingResult.documents[0] || null;
 
-      const doc = result.documents[0] || null;
+      if (!doc && settings.doubleReviewEnabled) {
+        const secondResult = await databases.listDocuments(
+          DATABASE_ID,
+          APPLICATIONS_COLLECTION_ID,
+          [
+            Query.equal("status", "pending_2nd"),
+            Query.orderAsc("createdAt"),
+            Query.limit(1),
+          ]
+        );
+        doc = secondResult.documents[0] || null;
+      }
+
       if (!doc) {
         return res.json({ application: null });
+      }
+
+      // If double review is on and app is pending_second_review,
+      // check if this moderator already reviewed it
+      if (settings.doubleReviewEnabled && doc.status === "pending_2nd") {
+        try {
+          const existingReviews = await databases.listDocuments(
+            DATABASE_ID,
+            REVIEWS_COLLECTION_ID,
+            [
+              Query.equal("applicationId", doc.$id),
+              Query.equal("moderatorUserId", userId),
+              Query.limit(1),
+            ]
+          );
+          if (existingReviews.total > 0) {
+            // This moderator already reviewed this app, skip it
+            // Release any claim and move on
+            log(`Skipping ${doc.$id}: moderator ${userId} already reviewed it`);
+            continue;
+          }
+        } catch {
+          // If we can't check, proceed with claim
+        }
       }
 
       const now = new Date().toISOString();
@@ -415,6 +483,7 @@ module.exports = async function (context) {
           {
             moderatorUserId: userId,
             claimedAt: now,
+            originalStatus: doc.status,
           }
         );
       } catch {

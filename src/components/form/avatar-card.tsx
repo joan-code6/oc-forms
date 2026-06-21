@@ -17,8 +17,8 @@ function SkinImages({ uuid, username }: { uuid: string; username: string }) {
 
   if (showPlaceholder) {
     return (
-      <div className="flex h-48 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-brand/10 to-transparent sm:h-56 sm:w-40">
-        <span className="text-4xl font-bold text-brand/30">?</span>
+      <div className="flex h-48 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-white/5 to-transparent sm:h-56 sm:w-40">
+        <span className="text-4xl font-bold text-white/20">?</span>
       </div>
     )
   }
@@ -73,13 +73,13 @@ export function AvatarCard({ minecraftUsername, onValidationChange }: AvatarCard
       <div className="flex flex-col items-center justify-center gap-5 rounded-xl border border-white/10 bg-white/[0.02] p-8">
         {isLoading ? (
           <div className="flex h-48 w-full items-center justify-center sm:h-56 sm:w-40">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
           </div>
         ) : uuid ? (
           <SkinImages key={uuid} uuid={uuid} username={minecraftUsername} />
         ) : (
-          <div className="flex h-48 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-brand/10 to-transparent sm:h-56 sm:w-40">
-            <span className="text-4xl font-bold text-brand/30">?</span>
+          <div className="flex h-48 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-white/5 to-transparent sm:h-56 sm:w-40">
+            <span className="text-4xl font-bold text-white/20">?</span>
           </div>
         )}
 
