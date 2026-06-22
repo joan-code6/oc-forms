@@ -4,7 +4,8 @@ const ENDPOINT    = process.env.APPWRITE_ENDPOINT;
 const PROJECT_ID  = process.env.APPWRITE_PROJECT_ID;
 const API_KEY     = process.env.APPWRITE_API_KEY;
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
-const COLLECTION_ID = process.env.APPWRITE_COLLECTION_ID;
+const APPLICATIONS_APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_APPLICATIONS_COLLECTION_ID;
+const SETTINGS_APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_APPLICATIONS_COLLECTION_ID;
 
 const QUESTION_TEXT = {
   q1: "Do you have a working microphone?",
@@ -101,7 +102,7 @@ module.exports = async function (context) {
 
     const existingByUser = await databases.listDocuments(
       DATABASE_ID,
-      COLLECTION_ID,
+      APPLICATIONS_COLLECTION_ID,
       [Query.equal("userID", userId)]
     );
 
@@ -114,7 +115,7 @@ module.exports = async function (context) {
 
     const existingByIGN = await databases.listDocuments(
       DATABASE_ID,
-      COLLECTION_ID,
+      APPLICATIONS_COLLECTION_ID,
       [Query.equal("minecraftIGN", ign)]
     );
 
@@ -126,6 +127,24 @@ module.exports = async function (context) {
     }
   } catch (e) {
     log("Duplicate check error:", e.message);
+  }
+
+  try {
+    const settingsClient = getServerClient();
+    const settingsDb = new Databases(settingsClient);
+    const settings = await settingsDb.getDocument(
+      DATABASE_ID,
+      SETTINGS_APPLICATIONS_COLLECTION_ID,
+      "global"
+    );
+    if (settings.appsPaused) {
+      return res.json(
+        { success: false, error: "Applications are currently paused. Please check back later." },
+        423
+      );
+    }
+  } catch (e) {
+    log("Pause check error (allowing through):", e.message);
   }
 
   const enrichedYesNo = {};
@@ -149,7 +168,7 @@ module.exports = async function (context) {
 
     const doc = await databases.createDocument(
       DATABASE_ID,
-      COLLECTION_ID,
+      APPLICATIONS_COLLECTION_ID,
       "unique()",
       {
         userID: userId,

@@ -8,6 +8,7 @@ const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_
 const CLAIMS_COLLECTION_ID = process.env.APPWRITE_CLAIMS_COLLECTION_ID;
 
 const REVIEWS_COLLECTION_ID = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
+const SETTINGS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
 const DISCORD_STAFF_ROLE_ID = process.env.DISCORD_STAFF_ROLE_ID;
@@ -208,7 +209,7 @@ module.exports = async function (context) {
     try {
       const settingsDoc = await databases.getDocument(
         DATABASE_ID,
-        "settings",
+        SETTINGS_COLLECTION_ID,
         "global"
       );
       appsPaused = settingsDoc.appsPaused || false;

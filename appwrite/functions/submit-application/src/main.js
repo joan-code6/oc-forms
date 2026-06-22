@@ -5,7 +5,7 @@ const ENDPOINT    = process.env.APPWRITE_ENDPOINT;
 const PROJECT_ID  = process.env.APPWRITE_PROJECT_ID;
 const API_KEY     = process.env.APPWRITE_API_KEY;
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
-const COLLECTION_ID = process.env.APPWRITE_COLLECTION_ID;
+const APPLICATIONS_APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_APPLICATIONS_COLLECTION_ID;
 
 function getServerClient() {
   const client = new Client();
@@ -80,7 +80,7 @@ export default async function (context) {
 
     const existingByUser = await databases.listDocuments(
       DATABASE_ID,
-      COLLECTION_ID,
+      APPLICATIONS_COLLECTION_ID,
       [`equal("userId", "${userId}")`]
     );
 
@@ -93,7 +93,7 @@ export default async function (context) {
 
     const existingByIGN = await databases.listDocuments(
       DATABASE_ID,
-      COLLECTION_ID,
+      APPLICATIONS_COLLECTION_ID,
       [`equal("minecraftIGN", "${ign}")`]
     );
 
@@ -114,7 +114,7 @@ export default async function (context) {
 
     const doc = await databases.createDocument(
       DATABASE_ID,
-      COLLECTION_ID,
+      APPLICATIONS_COLLECTION_ID,
       "unique()",
       {
         userId,

@@ -16,8 +16,9 @@ import { useSubmitApplication } from "@/hooks/use-appwrite-submit"
 import { useMinecraftValidation } from "@/hooks/use-minecraft-validation"
 import { textQuestionPages, yesNoQuestions, dropdownQuestions } from "@/lib/questions"
 import { toast } from "sonner"
-import { LogIn, ArrowRight, ArrowLeft } from "lucide-react"
+import { LogIn, ArrowRight, ArrowLeft, PauseCircle } from "lucide-react"
 import { BackgroundSlideshow } from "@/components/background-slideshow"
+import { callFunction } from "@/lib/functions"
 
 const TOTAL_PAGES = 6
 
@@ -81,6 +82,8 @@ function FormLoadingSkeleton() {
 function FormContent() {
   const [minecraftValid, setMinecraftValid] = useState(false)
   const [alreadySubmitted] = useState(getAlreadySubmitted)
+  const [appsPaused, setAppsPaused] = useState(false)
+  const [checkingStatus, setCheckingStatus] = useState(true)
   const { state, dispatch, validate, isFormComplete } = useForm()
   const { user, loading, error, loginWithDiscord } = useAppwriteAuth()
   const submitMutation = useSubmitApplication()
@@ -94,6 +97,23 @@ function FormContent() {
       } catch { /* ignore */ }
     }
   }, [state.submitted])
+
+  useEffect(() => {
+    let cancelled = false
+    callFunction<{ appsPaused?: boolean }>("get-app-settings")
+      .then((result) => {
+        if (!cancelled) {
+          setAppsPaused(!!result.appsPaused)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAppsPaused(false)
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingStatus(false)
+      })
+    return () => { cancelled = true }
+  }, [])
 
   const isFormReady = !!user && !loading
   const currentPage = state.currentPage
@@ -229,7 +249,7 @@ function FormContent() {
     state,
   ])
 
-  if (loading) {
+  if (checkingStatus || loading) {
     return <FormLoadingSkeleton />
   }
 
@@ -242,6 +262,25 @@ function FormContent() {
           disabled={false}
           onSubmit={() => {}}
         />
+      </div>
+    )
+  }
+
+  if (appsPaused) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <Card className="form-card animate-in">
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10">
+              <PauseCircle className="h-8 w-8 text-amber-400" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-white">Applications Paused</h1>
+            <p className="text-white/60">
+              Applications are temporarily closed. Please check back later or join
+              our Discord for updates.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }

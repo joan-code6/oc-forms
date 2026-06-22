@@ -54,6 +54,7 @@ export function ModeratorAuditPage() {
   const [search, setSearch] = useState("")
   const [reviewerFilter, setReviewerFilter] = useState("all")
   const [zoneFilter, setZoneFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
   const [sortBy, setSortBy] = useState<"date" | "rating">("date")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
 
@@ -78,6 +79,11 @@ export function ModeratorAuditPage() {
     return ["all", ...Array.from(names).sort()]
   }, [reviews])
 
+  const statuses = useMemo(() => {
+    const set = new Set(reviews.map((r) => r.application?.status).filter(Boolean) as string[])
+    return ["all", ...Array.from(set).sort()]
+  }, [reviews])
+
   const filteredReviews = useMemo(() => {
     const query = search.trim().toLowerCase()
     const filtered = reviews.filter((review) => {
@@ -92,7 +98,9 @@ export function ModeratorAuditPage() {
         reviewerFilter === "all" || review.moderatorDiscordUsername === reviewerFilter
       const matchesZone =
         zoneFilter === "all" || review.ratingZone === zoneFilter
-      return matchesSearch && matchesReviewer && matchesZone
+      const matchesStatus =
+        statusFilter === "all" || review.application?.status === statusFilter
+      return matchesSearch && matchesReviewer && matchesZone && matchesStatus
     })
 
     filtered.sort((a, b) => {
@@ -105,7 +113,7 @@ export function ModeratorAuditPage() {
     })
 
     return filtered
-  }, [reviews, search, reviewerFilter, zoneFilter, sortBy, sortDir])
+  }, [reviews, search, reviewerFilter, zoneFilter, statusFilter, sortBy, sortDir])
 
   const toggleSort = (field: "date" | "rating") => {
     if (sortBy === field) {
@@ -197,6 +205,21 @@ export function ModeratorAuditPage() {
                 Red (0-25%)
               </span>
             </SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {statuses
+              .filter((s) => s !== "all")
+              .map((s) => (
+                <SelectItem key={s} value={s}>
+                  <span className="capitalize">{s.replace(/_/g, " ")}</span>
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
         <div className="flex gap-1">

@@ -57,13 +57,9 @@ module.exports = async function (context) {
 
   const userId = req.headers?.["x-appwrite-user-id"];
 
-  if (!userId) {
-    return res.json({ error: "Unauthorized." }, 401);
-  }
-
-  const isAdmin = await verifyAdminRole(userId, log);
-  if (!isAdmin) {
-    return res.json({ error: "Insufficient permissions." }, 403);
+  let isAdmin = false;
+  if (userId) {
+    isAdmin = await verifyAdminRole(userId, log);
   }
 
   try {
@@ -85,10 +81,16 @@ module.exports = async function (context) {
       };
     }
 
+    if (isAdmin) {
+      return res.json({
+        appsPaused: settings.appsPaused || false,
+        doubleReviewEnabled: settings.doubleReviewEnabled || false,
+        conflictThreshold: typeof settings.conflictThreshold === "number" ? settings.conflictThreshold : 30,
+      });
+    }
+
     return res.json({
       appsPaused: settings.appsPaused || false,
-      doubleReviewEnabled: settings.doubleReviewEnabled || false,
-      conflictThreshold: typeof settings.conflictThreshold === "number" ? settings.conflictThreshold : 30,
     });
   } catch (e) {
     error("Failed to fetch settings:", e.message);

@@ -1,25 +1,19 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 
-const IMAGES = [
-  "/screenshots/ancient_city_blue_lenterns.png",
-  "/screenshots/crazy_looking_cave_blueish.png",
-  "/screenshots/bone_structure_dark_cave.png",
-  "/screenshots/blue_ice_biiiiiggg_spike_forest.png",
-  "/screenshots/fog_cave_dripstone.png",
-  "/screenshots/deep_dark_portal.png",
-  "/screenshots/hell_WTF.png",
-  "/screenshots/lush_cave_x_custom_moshrooms.png",
-  "/screenshots/weed_dark_oak_white_fog.png",
-  "/screenshots/spikes_both_dir_kinda_cave_questionmark.png",
-  "/screenshots/redish_cave.png",
-]
+const SCREENSHOT_FILES = import.meta.glob(
+  "/public/screenshots/*.{png,jpg,jpeg,webp,avif}",
+  { eager: true, query: "?url", import: "default" },
+)
+
+const IMAGES = Object.values(SCREENSHOT_FILES) as string[]
 
 const TRANSITION_DURATION = 2000
 const DISPLAY_DURATION = 10000
 
 export function BackgroundSlideshow() {
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [nextIndex, setNextIndex] = useState(1)
+  const initial = useMemo(() => Math.floor(Math.random() * IMAGES.length), [])
+  const [currentIndex, setCurrentIndex] = useState(initial)
+  const [nextIndex, setNextIndex] = useState((initial + 1) % IMAGES.length)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
@@ -31,6 +25,13 @@ export function BackgroundSlideshow() {
   }, [])
 
   const blur = isMobile ? "blur(2px)" : "blur(6px)"
+
+  useEffect(() => {
+    for (const src of IMAGES) {
+      const img = new Image()
+      img.src = src
+    }
+  }, [])
 
   const goToNext = useCallback(() => {
     setIsTransitioning(true)

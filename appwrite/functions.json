@@ -1,0 +1,173 @@
+[
+    {
+        "$id": "verify-moderator-access",
+        "name": "Verify Moderator Access",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/verify-moderator-access",
+        "timeout": 15
+    },
+    {
+        "$id": "verify-invite-access",
+        "name": "Verify Invite Access",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/verify-invite-access",
+        "timeout": 15
+    },
+    {
+        "$id": "submit-application",
+        "name": "Submit Application",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/submit-application",
+        "timeout": 15
+    },
+    {
+        "$id": "get-next-application",
+        "name": "Get Next Application",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-next-application",
+        "timeout": 15
+    },
+    {
+        "$id": "submit-application-rating",
+        "name": "Submit Application Rating",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/submit-application-rating",
+        "timeout": 15
+    },
+    {
+        "$id": "get-moderator-stats",
+        "name": "Get Moderator Stats",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-moderator-stats",
+        "timeout": 15
+    },
+    {
+        "$id": "create-invite-link",
+        "name": "Create Invite Link",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/create-invite-link",
+        "timeout": 15
+    },
+    {
+        "$id": "redeem-invite-link",
+        "name": "Redeem Invite Link",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/redeem-invite-link",
+        "timeout": 15
+    },
+    {
+        "$id": "get-mod-reviews",
+        "name": "Get Mod Reviews",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-mod-reviews",
+        "timeout": 15
+    },
+    {
+        "$id": "get-mod-review",
+        "name": "Get Mod Review",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-mod-review",
+        "timeout": 15
+    },
+    {
+        "$id": "update-mod-review",
+        "name": "Update Mod Review",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/update-mod-review",
+        "timeout": 15
+    },
+    {
+        "$id": "get-review-conflicts",
+        "name": "Get Review Conflicts",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-review-conflicts",
+        "timeout": 15
+    },
+    {
+        "$id": "6a37e8d18b164b9de904",
+        "name": "get-conflict-detail",
+        "runtime": "node-18.0",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-conflict-detail",
+        "timeout": 30
+    },
+    {
+        "$id": "resolve-conflict",
+        "name": "Resolve Conflict",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/resolve-conflict",
+        "timeout": 15
+    },
+    {
+        "$id": "get-app-settings",
+        "name": "Get App Settings",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-app-settings",
+        "timeout": 15
+    },
+    {
+        "$id": "update-app-settings",
+        "name": "Update App Settings",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/update-app-settings",
+        "timeout": 15
+    },
+    {
+        "$id": "cleanup-stale-claims",
+        "name": "Cleanup Stale Claims",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/cleanup-stale-claims",
+        "timeout": 15,
+        "schedule": "*/5 * * * *"
+    }
+]

@@ -57,6 +57,10 @@ module.exports = async function (context) {
   const { req, res, log, error } = context;
 
   const userId = req.headers?.["x-appwrite-user-id"];
+  let body = {};
+  try {
+    body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
+  } catch (_) { /* ignore malformed body */ }
 
   if (!userId) {
     return res.json({ error: "Unauthorized." }, 401);
@@ -95,10 +99,14 @@ module.exports = async function (context) {
 
     const applicationIds = [...new Set(formatted.map((r) => r.applicationId).filter(Boolean))];
     if (applicationIds.length > 0) {
+      const appQueries = [Query.equal("$id", applicationIds), Query.limit(100)];
+      if (body.status && typeof body.status === "string") {
+        appQueries.push(Query.equal("status", body.status));
+      }
       const applications = await databases.listDocuments(
         DATABASE_ID,
         APPLICATIONS_COLLECTION_ID,
-        [Query.equal("$id", applicationIds), Query.limit(100)]
+        appQueries
       );
 
       const appMap = new Map();
