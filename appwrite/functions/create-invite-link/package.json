@@ -1,0 +1,9 @@
+{
+  "name": "create-invite-link",
+  "version": "1.0.0",
+  "description": "Generates a single-use invite link for fasttrack application submission.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

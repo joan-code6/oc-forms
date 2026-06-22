@@ -1,0 +1,9 @@
+{
+  "name": "verify-invite-access",
+  "version": "1.0.0",
+  "description": "Checks whether the current Appwrite user has the Discord fasttrack role required for invite link generation.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

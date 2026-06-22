@@ -13,6 +13,8 @@ import { ModeratorConflictsPage } from "@/pages/moderator-conflicts"
 import { ModeratorConflictDetailPage } from "@/pages/moderator-conflict-detail"
 import { NoAccessPage } from "@/pages/no-access"
 import { PreviewImagesPage } from "@/pages/preview-images"
+import { InviteDashboardPage } from "@/pages/invite-dashboard"
+import { InviteRedeemPage } from "@/pages/invite-redeem"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +41,8 @@ export default function App() {
                 <Route path="/moderator/conflicts/:applicationId" element={<ModeratorConflictDetailPage />} />
                 <Route path="/no-access" element={<NoAccessPage />} />
                 <Route path="/preview-images" element={<PreviewImagesPage />} />
+                <Route path="/invites" element={<InviteDashboardPage />} />
+                <Route path="/invite/:code" element={<InviteRedeemPage />} />
               </Routes>
             </main>
 

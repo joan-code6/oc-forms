@@ -1,0 +1,9 @@
+{
+  "name": "redeem-invite-link",
+  "version": "1.0.0",
+  "description": "Redeems a single-use invite link by creating an auto-reviewed application.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}
