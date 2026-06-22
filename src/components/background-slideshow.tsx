@@ -15,7 +15,7 @@ const IMAGES = [
 ]
 
 const TRANSITION_DURATION = 2000
-const DISPLAY_DURATION = 6000
+const DISPLAY_DURATION = 10000
 
 export function BackgroundSlideshow() {
   const [currentIndex, setCurrentIndex] = useState(0)
