@@ -28,7 +28,9 @@
         "ignore": "node_modules\n.tmp",
         "path": "functions/submit-application",
         "timeout": 15,
-        "execute": ["users"]
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "get-next-application",
@@ -170,5 +172,15 @@
         "path": "functions/cleanup-stale-claims",
         "timeout": 15,
         "schedule": "*/5 * * * *"
+    },
+    {
+        "$id": "get-unscored-applications",
+        "name": "Get Unscored Applications",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-unscored-applications",
+        "timeout": 15
     }
 ]

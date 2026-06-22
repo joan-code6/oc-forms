@@ -1,0 +1,9 @@
+{
+  "name": "get-unscored-applications",
+  "version": "1.0.0",
+  "description": "Returns all applications that haven't been fully reviewed/scored yet.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}

@@ -11,6 +11,7 @@ import { ModeratorAuditDetailPage } from "@/pages/moderator-audit-detail"
 import { ModeratorSettingsPage } from "@/pages/moderator-settings"
 import { ModeratorConflictsPage } from "@/pages/moderator-conflicts"
 import { ModeratorConflictDetailPage } from "@/pages/moderator-conflict-detail"
+import { UnscoredApplicationsPage } from "@/pages/unscored-applications"
 import { NoAccessPage } from "@/pages/no-access"
 import { PreviewImagesPage } from "@/pages/preview-images"
 import { InviteDashboardPage } from "@/pages/invite-dashboard"
@@ -39,6 +40,7 @@ export default function App() {
                 <Route path="/moderator/settings" element={<ModeratorSettingsPage />} />
                 <Route path="/moderator/conflicts" element={<ModeratorConflictsPage />} />
                 <Route path="/moderator/conflicts/:applicationId" element={<ModeratorConflictDetailPage />} />
+                <Route path="/moderator/unscored" element={<UnscoredApplicationsPage />} />
                 <Route path="/no-access" element={<NoAccessPage />} />
                 <Route path="/preview-images" element={<PreviewImagesPage />} />
                 <Route path="/invites" element={<InviteDashboardPage />} />
