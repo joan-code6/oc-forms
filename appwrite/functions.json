@@ -27,7 +27,8 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/submit-application",
-        "timeout": 15
+        "timeout": 15,
+        "execute": ["users"]
     },
     {
         "$id": "get-next-application",

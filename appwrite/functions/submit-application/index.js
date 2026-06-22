@@ -4,8 +4,8 @@ const ENDPOINT    = process.env.APPWRITE_ENDPOINT;
 const PROJECT_ID  = process.env.APPWRITE_PROJECT_ID;
 const API_KEY     = process.env.APPWRITE_API_KEY;
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
-const APPLICATIONS_APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_APPLICATIONS_COLLECTION_ID;
-const SETTINGS_APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_APPLICATIONS_COLLECTION_ID;
+const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_COLLECTION_ID;
+const SETTINGS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
 
 const QUESTION_TEXT = {
   q1: "Do you have a working microphone?",
@@ -134,7 +134,7 @@ module.exports = async function (context) {
     const settingsDb = new Databases(settingsClient);
     const settings = await settingsDb.getDocument(
       DATABASE_ID,
-      SETTINGS_APPLICATIONS_COLLECTION_ID,
+      SETTINGS_COLLECTION_ID,
       "global"
     );
     if (settings.appsPaused) {

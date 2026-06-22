@@ -23,14 +23,19 @@ async function verifyAdminRole(userId, log) {
     const { identities: identityList } = await users.listIdentities([
       Query.equal("userId", userId)
     ]);
+    log("identityList count:", identityList?.length ?? 0);
 
     const discordIdentity = identityList.find(
       (id) => id.provider === "discord"
     );
 
-    if (!discordIdentity) return false;
+    if (!discordIdentity) {
+      log("No Discord identity found");
+      return false;
+    }
 
     const discordId = discordIdentity.providerUid;
+    log("Discord ID:", discordId);
     if (!discordId) return false;
 
     const res = await fetch(
@@ -43,10 +48,17 @@ async function verifyAdminRole(userId, log) {
       }
     );
 
-    if (!res.ok) return false;
+    if (!res.ok) {
+      log("Discord API returned", res.status, res.statusText);
+      return false;
+    }
 
     const member = await res.json();
-    return member.roles?.includes(ADMIN_ROLE_ID) || false;
+    log("Discord member found:", !!member, "roles:", member?.roles?.length ?? 0);
+    log("Looking for ADMIN_ROLE_ID:", ADMIN_ROLE_ID);
+    const hasAdmin = member.roles?.includes(ADMIN_ROLE_ID) || false;
+    log("hasAdmin:", hasAdmin);
+    return hasAdmin;
   } catch (e) {
     log("verifyAdminRole error:", e.message);
     return false;
