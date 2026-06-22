@@ -287,27 +287,6 @@ function FormContent() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 pb-24 pt-8 md:pt-12">
-      {/* Page indicator */}
-      <div className="flex items-center justify-center gap-3">
-        <span className="text-sm text-white/40">
-          {currentPage} / {TOTAL_PAGES}
-        </span>
-        <div className="flex gap-1.5">
-          {Array.from({ length: TOTAL_PAGES }, (_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i + 1 === currentPage
-                  ? "w-6 bg-white"
-                  : i + 1 < currentPage
-                    ? "w-1.5 bg-white/50"
-                    : "w-1.5 bg-white/20"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
       {/* Page 1: Welcome */}
       {currentPage === 1 && (
         <Card className="form-card animate-in">
@@ -421,6 +400,25 @@ function FormContent() {
           ) : (
             <div />
           )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-white/40">
+              {currentPage} / {TOTAL_PAGES}
+            </span>
+            <div className="flex gap-1.5">
+              {Array.from({ length: TOTAL_PAGES }, (_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i + 1 === currentPage
+                      ? "w-6 bg-white"
+                      : i + 1 < currentPage
+                        ? "w-1.5 bg-white/50"
+                        : "w-1.5 bg-white/20"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
           <Button
             type="button"
             onClick={handleNext}
@@ -441,6 +439,25 @@ function FormContent() {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-white/40">
+              {currentPage} / {TOTAL_PAGES}
+            </span>
+            <div className="flex gap-1.5">
+              {Array.from({ length: TOTAL_PAGES }, (_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i + 1 === currentPage
+                      ? "w-6 bg-white"
+                      : i + 1 < currentPage
+                        ? "w-1.5 bg-white/50"
+                        : "w-1.5 bg-white/20"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
           <SubmitSuccessCard
             isSubmitting={state.isSubmitting}
             submitted={state.submitted}
