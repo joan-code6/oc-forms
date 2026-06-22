@@ -7,6 +7,7 @@ const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
 const DISCORD_STAFF_ROLE_ID = process.env.DISCORD_STAFF_ROLE_ID;
 const ADMIN_ROLE_ID = process.env.ADMIN_ROLE_ID;
+const DISCORD_FASTTRACK_ROLE_ID = process.env.DISCORD_FASTTRACK_ROLE_ID;
 
 function getServerClient() {
   const client = new Client();
@@ -67,15 +68,19 @@ async function verifyStaffRole(userId, log) {
     const hasAdminRole = ADMIN_ROLE_ID ? member.roles.includes(ADMIN_ROLE_ID) : false;
     log("hasAdminRole:", hasAdminRole);
 
+    const hasFasttrackRole = DISCORD_FASTTRACK_ROLE_ID ? member.roles.includes(DISCORD_FASTTRACK_ROLE_ID) : false;
+    log("hasFasttrackRole:", hasFasttrackRole);
+
     return {
       isStaff: hasStaffRole,
       isAdmin: hasAdminRole,
+      isFasttrack: hasFasttrackRole,
       discordId,
       discordUsername: member.nick || member.user?.username || "",
     };
   } catch (e) {
     log("verifyStaffRole error:", e.message);
-    return { isStaff: false, isAdmin: false };
+    return { isStaff: false, isAdmin: false, isFasttrack: false };
   }
 }
 
@@ -104,5 +109,6 @@ module.exports = async function (context) {
     discordId: staffCheck.discordId,
     discordUsername: staffCheck.discordUsername,
     isAdmin: staffCheck.isAdmin || false,
+    isFasttrack: staffCheck.isFasttrack || false,
   });
 };

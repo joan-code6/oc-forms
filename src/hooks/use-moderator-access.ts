@@ -13,6 +13,7 @@ interface VerifyResult {
   discordId?: string
   discordUsername?: string
   isAdmin?: boolean
+  isFasttrack?: boolean
 }
 
 export interface ModeratorAccessState {
@@ -20,6 +21,7 @@ export interface ModeratorAccessState {
   allowed: boolean
   denied: boolean
   isAdmin: boolean
+  isFasttrack: boolean
   discordUsername: string | null
 }
 
@@ -30,6 +32,7 @@ export function useModeratorAccess(): ModeratorAccessState {
     allowed: false,
     denied: false,
     isAdmin: false,
+    isFasttrack: false,
     discordUsername: null,
   })
   const navigate = useNavigate()
@@ -55,6 +58,7 @@ export function useModeratorAccess(): ModeratorAccessState {
           allowed: result.allowed,
           denied: !result.allowed,
           isAdmin: result.isAdmin ?? false,
+          isFasttrack: result.isFasttrack ?? false,
           discordUsername: result.discordUsername ?? null,
         })
         if (!result.allowed) {
@@ -68,6 +72,7 @@ export function useModeratorAccess(): ModeratorAccessState {
           allowed: false,
           denied: true,
           isAdmin: false,
+          isFasttrack: false,
           discordUsername: null,
         })
         navigate("/no-access")
