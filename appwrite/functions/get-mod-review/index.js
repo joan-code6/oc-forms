@@ -79,7 +79,22 @@ function formatQuestionText(val, fallbackId) {
   return fallbackId;
 }
 
-function formatApplication(doc) {
+async function fetchDiscordJoinDate(discordId) {
+  if (!discordId || !DISCORD_BOT_TOKEN || !DISCORD_GUILD_ID) return null;
+  try {
+    const res = await fetch(
+      `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}`,
+      { headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" } }
+    );
+    if (!res.ok) return null;
+    const member = await res.json();
+    return member?.joined_at || null;
+  } catch {
+    return null;
+  }
+}
+
+function formatApplication(doc, joinedAt) {
   let yesNoAnswers = {};
   let textAnswers = {};
   let dropdownAnswers = {};
@@ -110,6 +125,7 @@ function formatApplication(doc) {
     skinUrl,
     discordUsername: doc.discordUsername || "",
     discordId: doc.discordId || "",
+    joinedAt,
     timezone: doc.timezone || "",
     createdAt: doc.createdAt || "",
     status: doc.status || "",
@@ -178,7 +194,8 @@ module.exports = async function (context) {
           APPLICATIONS_COLLECTION_ID,
           reviewDoc.applicationId
         );
-        application = formatApplication(appDoc);
+        const joinedAt = await fetchDiscordJoinDate(appDoc.discordId);
+        application = formatApplication(appDoc, joinedAt);
       } catch (appErr) {
         log("Could not fetch application for review:", appErr.message);
       }

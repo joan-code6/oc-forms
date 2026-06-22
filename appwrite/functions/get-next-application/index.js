@@ -104,6 +104,7 @@ async function fetchApplicantDiscordRoles(discordId) {
 
     return {
       roles: member.roles.map((roleId) => roleMap[roleId]).filter(Boolean),
+      joinedAt: member.joined_at || null,
       unavailable: false,
     };
   } catch {
@@ -169,6 +170,7 @@ function formatApplication(doc, discordRolesResult) {
     discordUsername: doc.discordUsername || "",
     discordRoles: discordRolesResult.roles || [],
     discordRolesUnavailable: discordRolesResult.unavailable || false,
+    joinedAt: discordRolesResult.joinedAt || null,
     timezone: doc.timezone || "",
     createdAt: doc.createdAt || "",
     status: doc.status,

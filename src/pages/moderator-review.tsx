@@ -19,6 +19,7 @@ interface ApplicationData {
   discordUsername: string
   discordRoles: string[]
   discordRolesUnavailable: boolean
+  joinedAt: string | null
   timezone: string
   createdAt: string
   status: string
@@ -230,6 +231,14 @@ export function ModeratorReviewPage() {
                     {application.discordUsername}
                   </span>
                 </div>
+                {application.joinedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-white/50">Server Joined</span>
+                    <span className="font-medium text-white">
+                      {new Date(application.joinedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
                 {application.discordRoles.length > 0 && (
                   <div className="flex flex-col gap-1">
                     <span className="text-white/50">Guild Roles</span>

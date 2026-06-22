@@ -30,6 +30,7 @@ interface ApplicationData {
   skinUrl: string
   discordUsername: string
   discordId: string
+  joinedAt: string | null
   timezone: string
   createdAt: string
   status: string
@@ -214,6 +215,14 @@ export function ModeratorConflictDetailPage() {
                   <span className="text-white/50">Discord</span>
                   <span className="font-medium text-white">{application.discordUsername}</span>
                 </div>
+                {application.joinedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-white/50">Server Joined</span>
+                    <span className="font-medium text-white">
+                      {new Date(application.joinedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-white/50">Timezone</span>
                   <span className="font-medium text-white">{application.timezone}</span>
