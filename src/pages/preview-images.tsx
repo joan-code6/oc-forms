@@ -3,19 +3,19 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useNavigate } from "react-router-dom"
 
-const IMAGES = [
-  { src: "/screenshots/ancient_city_blue_lenterns.png", name: "Ancient City" },
-  { src: "/screenshots/crazy_looking_cave_blueish.png", name: "Cave" },
-  { src: "/screenshots/bone_structure_dark_cave.png", name: "Bone Cave" },
-  { src: "/screenshots/blue_ice_biiiiiggg_spike_forest.png", name: "Ice Spikes" },
-  { src: "/screenshots/fog_cave_dripstone.png", name: "Dripstone Cave" },
-  { src: "/screenshots/deep_dark_portal.png", name: "Deep Dark" },
-  { src: "/screenshots/hell_WTF.png", name: "Nether" },
-  { src: "/screenshots/lush_cave_x_custom_moshrooms.png", name: "Lush Cave" },
-  { src: "/screenshots/weed_dark_oak_white_fog.png", name: "Dark Oak Forest" },
-  { src: "/screenshots/spikes_both_dir_kinda_cave_questionmark.png", name: "Crystal Cave" },
-  { src: "/screenshots/redish_cave.png", name: "Red Cave" },
-]
+const SCREENSHOT_FILES = import.meta.glob(
+  "/public/screenshots/*.{png,jpg,jpeg,webp,avif}",
+  { eager: true, query: "?url", import: "default" },
+)
+
+const IMAGES = Object.entries(SCREENSHOT_FILES).map(([path, src]) => {
+  const filename = path.split("/").pop() ?? path
+  const basename = filename.replace(/\.\w+$/, "")
+  const name = basename
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return { src: src as string, name }
+})
 
 const TRANSITION_DURATION = 500
 const AUTO_PLAY_INTERVAL = 5000
