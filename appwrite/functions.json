@@ -7,7 +7,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/verify-moderator-access",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "verify-invite-access",
@@ -17,7 +20,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/verify-invite-access",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "submit-application",
@@ -40,7 +46,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/get-next-application",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "submit-application-rating",
@@ -50,7 +59,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/submit-application-rating",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "get-moderator-stats",
@@ -60,7 +72,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/get-moderator-stats",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "create-invite-link",
@@ -70,7 +85,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/create-invite-link",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "redeem-invite-link",
@@ -80,7 +98,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/redeem-invite-link",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "get-mod-reviews",
@@ -90,7 +111,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/get-mod-reviews",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "get-mod-review",
@@ -100,7 +124,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/get-mod-review",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "update-mod-review",
@@ -110,7 +137,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/update-mod-review",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "get-review-conflicts",
@@ -120,7 +150,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/get-review-conflicts",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "6a37e8d18b164b9de904",
@@ -130,7 +163,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/get-conflict-detail",
-        "timeout": 30
+        "timeout": 30,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "resolve-conflict",
@@ -140,7 +176,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/resolve-conflict",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "get-app-settings",
@@ -150,7 +189,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/get-app-settings",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "update-app-settings",
@@ -160,7 +202,10 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/update-app-settings",
-        "timeout": 15
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     },
     {
         "$id": "cleanup-stale-claims",
