@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Loader2 } from "lucide-react"
-import { getAccount } from "@/lib/appwrite"
+import { createSessionAndStore } from "@/lib/appwrite"
 
 function getReturnPath(searchParams: URLSearchParams): string {
   const urlReturnTo = searchParams.get("returnTo")
@@ -32,10 +32,13 @@ export function AuthCallback() {
     const secret = searchParams.get("secret")
 
     if (userId && secret) {
-      getAccount()
-        .createSession({ userId, secret })
-        .then(() => {
-          navigate(returnPath.current, { replace: true })
+      createSessionAndStore(userId, secret)
+        .then((session) => {
+          if (session) {
+            navigate(returnPath.current, { replace: true })
+          } else {
+            setStatus("error")
+          }
         })
         .catch(() => {
           setStatus("error")
@@ -66,8 +69,12 @@ export function AuthCallback() {
 
   if (status === "error") {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
         <p className="text-red-400">Authentication failed. Please try again.</p>
+        <p className="max-w-md text-sm text-white/40">
+          If you're using Opera GX or Brave, the tracker/ad blocker or strict cookie settings may be preventing login.
+          Try disabling the blocker for this site, allowing third-party cookies, or use Chrome / Edge / Firefox.
+        </p>
         <button
           onClick={() => navigate(returnPath.current, { replace: true })}
           className="mt-2 rounded-md bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"

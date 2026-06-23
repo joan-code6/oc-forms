@@ -16,9 +16,10 @@ import { useSubmitApplication } from "@/hooks/use-appwrite-submit"
 import { useMinecraftValidation } from "@/hooks/use-minecraft-validation"
 import { textQuestionPages, yesNoQuestions, dropdownQuestions } from "@/lib/questions"
 import { toast } from "sonner"
-import { LogIn, ArrowRight, ArrowLeft, PauseCircle } from "lucide-react"
+import { LogIn, ArrowRight, ArrowLeft, PauseCircle, AlertTriangle } from "lucide-react"
 import { BackgroundSlideshow } from "@/components/background-slideshow"
 import { callFunction } from "@/lib/functions"
+import { checkStorage, isPrivacyBrowserLikely } from "@/lib/storage-check"
 
 const TOTAL_PAGES = 6
 
@@ -84,6 +85,7 @@ function FormContent() {
   const [alreadySubmitted] = useState(getAlreadySubmitted)
   const [appsPaused, setAppsPaused] = useState(false)
   const [checkingStatus, setCheckingStatus] = useState(true)
+  const [storageWarning, setStorageWarning] = useState<ReturnType<typeof checkStorage> | null>(null)
   const { state, dispatch, validate, isFormComplete } = useForm()
   const { user, loading, error, loginWithDiscord } = useAppwriteAuth()
   const submitMutation = useSubmitApplication()
@@ -97,6 +99,13 @@ function FormContent() {
       } catch { /* ignore */ }
     }
   }, [state.submitted])
+
+  useEffect(() => {
+    const status = checkStorage()
+    if (!status.localStorage || !status.sessionStorage || !status.cookies) {
+      setStorageWarning(status)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -222,7 +231,11 @@ function FormContent() {
           dispatch({ type: "SET_SUBMITTING", value: false })
           if (result.success) {
             dispatch({ type: "SET_SUBMITTED", value: true })
-            sessionStorage.removeItem("outcraft-form")
+            try {
+              sessionStorage.removeItem("outcraft-form")
+            } catch {
+              /* ignore */
+            }
             toast.success("Application submitted successfully!")
           } else {
             toast.error(result.error || "Failed to submit application.")
@@ -287,6 +300,19 @@ function FormContent() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 pb-24 pt-8 md:pt-12">
+      {storageWarning && (
+        <div className="animate-in flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+          <div>
+            <p className="font-semibold">Browser privacy settings are blocking required features</p>
+            <p className="mt-1 text-amber-300/80">
+              {isPrivacyBrowserLikely()
+                ? "Opera GX / Brave's tracker or ad blocker may be preventing this form from working correctly. Please disable the blocker for this site, or switch to Chrome / Edge / Firefox."
+                : "It looks like private browsing or an extension is blocking cookies or site storage. Please allow them for this site or try another browser."}
+            </p>
+          </div>
+        </div>
+      )}
       {/* Page 1: Welcome */}
       {currentPage === 1 && (
         <Card className="form-card animate-in">
@@ -386,7 +412,7 @@ function FormContent() {
 
       {/* Navigation buttons */}
       {currentPage < TOTAL_PAGES ? (
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
           {currentPage > 1 ? (
             <Button
               type="button"
@@ -424,7 +450,7 @@ function FormContent() {
           </Button>
         </div>
       ) : (
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
           <Button
             type="button"
             variant="outline"

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ArrowLeft, AlertTriangle, ShieldCheck, Search, Pencil, User, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { ArrowLeft, AlertTriangle, ShieldCheck, Search, Pencil, User, ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from "lucide-react"
 
 const REVIEWS_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_REVIEWS_ID || "get-mod-reviews"
@@ -274,9 +274,18 @@ export function ModeratorAuditPage() {
                     </div>
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex flex-wrap items-center gap-3">
-                        <span className="text-sm font-medium text-white">
+                        <button
+                          className="text-sm font-medium text-white hover:text-brand transition-colors flex items-center gap-1"
+                          onClick={() =>
+                            navigate("/moderator/review", {
+                              state: { applicationId: review.applicationId },
+                            })
+                          }
+                          title="Open in review"
+                        >
                           {review.application?.minecraftIGN || "Unknown applicant"}
-                        </span>
+                          <ExternalLink className="h-3 w-3 text-white/40" />
+                        </button>
                         <span className="text-sm text-white/40">
                           {review.application?.discordUsername || "No discord"}
                         </span>

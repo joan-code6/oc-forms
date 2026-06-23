@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ChevronRight, ArrowLeft, AlertTriangle } from "lucide-react"
+import { ChevronRight, ArrowLeft, AlertTriangle, SkipForward } from "lucide-react"
 
 const NEXT_APP_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_NEXT_APP_ID || "get-next-application"
@@ -138,6 +138,13 @@ export function ModeratorReviewPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleSkip = () => {
+    setRating(null)
+    setHasSelected(false)
+    setModeratorNote("")
+    loadApplication()
   }
 
   if (accessLoading || !allowed) return null
@@ -353,15 +360,27 @@ export function ModeratorReviewPage() {
               </div>
             )}
 
-            <Button
-              className="w-full max-w-xl"
-              size="lg"
-              disabled={!hasSelected || submitting}
-              onClick={handleSubmit}
-            >
-              {submitting ? "Saving..." : "Continue"}
-              {!submitting && <ChevronRight className="h-4 w-4" />}
-            </Button>
+            <div className="flex w-full max-w-xl gap-3">
+              <Button
+                className="flex-1"
+                size="lg"
+                disabled={!hasSelected || submitting}
+                onClick={handleSubmit}
+              >
+                {submitting ? "Saving..." : "Continue"}
+                {!submitting && <ChevronRight className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={submitting}
+                onClick={handleSkip}
+                className="gap-2"
+              >
+                Skip
+                <SkipForward className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

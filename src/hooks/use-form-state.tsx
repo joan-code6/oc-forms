@@ -112,7 +112,11 @@ export function FormProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
-    sessionStorage.setItem("outcraft-form", JSON.stringify(state))
+    try {
+      sessionStorage.setItem("outcraft-form", JSON.stringify(state))
+    } catch {
+      // Ignore storage errors (e.g. Opera GX private mode / tracker blocking)
+    }
   }, [state])
 
   const validate = useCallback((): boolean => {

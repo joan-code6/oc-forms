@@ -39,7 +39,8 @@ export function useAppwriteAuth() {
         setUser(null)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to verify session")
+      const msg = e instanceof Error ? e.message : "Failed to verify session"
+      setError(msg + (msg.includes("session") ? ". If you're using Opera GX or Brave, try disabling the tracker/ad blocker or use another browser." : ""))
       setUser(null)
     } finally {
       setLoading(false)
@@ -75,7 +76,8 @@ export function useAppwriteAuth() {
         }
       } catch (e) {
         if (cancelled) return
-        setError(e instanceof Error ? e.message : "Failed to verify session")
+        const msg = e instanceof Error ? e.message : "Failed to verify session"
+        setError(msg + (msg.toLowerCase().includes("session") ? ". If you're using Opera GX or Brave, try disabling the tracker/ad blocker or use another browser." : ""))
         setUser(null)
       } finally {
         if (!cancelled) setLoading(false)

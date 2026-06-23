@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <button
             onClick={() => {
               this.setState({ hasError: false, error: null })
-              window.location.href = "/moderator"
+              window.location.href = "/"
             }}
             className="mt-4 rounded-md bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
           >
