@@ -22,6 +22,7 @@ interface UnscoredApplication {
   id: string
   minecraftIGN: string
   discordUsername: string
+  joinedAt: string | null
   timezone: string
   createdAt: string
   status: string
@@ -235,6 +236,11 @@ export function UnscoredApplicationsPage() {
                         <span className="text-white/50">
                           {new Date(app.createdAt).toLocaleDateString()}
                         </span>
+                        {app.joinedAt && (
+                          <span className="text-white/50">
+                            Joined {new Date(app.joinedAt).toLocaleDateString()}
+                          </span>
+                        )}
                         {app.timezone && (
                           <span className="flex items-center gap-1 text-white/50">
                             <MapPin className="h-3 w-3" />

@@ -58,6 +58,26 @@ async function verifyStaffRole(userId) {
   }
 }
 
+async function fetchDiscordJoinDate(discordId) {
+  if (!discordId) return null;
+  try {
+    const res = await fetch(
+      `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}`,
+      {
+        headers: {
+          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!res.ok) return null;
+    const member = await res.json();
+    return member.joined_at || null;
+  } catch {
+    return null;
+  }
+}
+
 async function getReviewCount(databases, applicationId) {
   try {
     const result = await databases.listDocuments(
@@ -129,7 +149,8 @@ module.exports = async function (context) {
       allApplications.map(async (app) => {
         const formatted = formatApplication(app);
         const reviewerCount = await getReviewCount(databases, app.$id);
-        return { ...formatted, reviewerCount };
+        const joinedAt = await fetchDiscordJoinDate(app.discordId);
+        return { ...formatted, reviewerCount, joinedAt };
       })
     );
 
