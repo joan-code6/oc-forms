@@ -230,5 +230,70 @@
         "execute": [
             "users"
         ]
+    },
+    {
+        "$id": "export-accept-applications",
+        "name": "Export Accept Applications",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/export-accept-applications",
+        "timeout": 60,
+        "execute": [
+            "users"
+        ]
+    },
+    {
+        "$id": "get-accepted-users",
+        "name": "Get Accepted Users",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-accepted-users",
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
+    },
+    {
+        "$id": "manage-accepted-label",
+        "name": "Manage Accepted Label",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/manage-accepted-label",
+        "timeout": 30,
+        "execute": [
+            "users"
+        ]
+    },
+    {
+        "$id": "manage-discord-event-role",
+        "name": "Manage Discord Event Role",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/manage-discord-event-role",
+        "timeout": 60,
+        "execute": [
+            "users"
+        ]
+    },
+    {
+        "$id": "export-whitelist",
+        "name": "Export Whitelist",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/export-whitelist",
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     }
 ]

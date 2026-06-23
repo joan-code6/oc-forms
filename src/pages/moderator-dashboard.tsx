@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ClipboardCheck, LogOut, AlertTriangle, BookOpen, Settings, ShieldAlert, Link2, Clock } from "lucide-react"
+import { ClipboardCheck, LogOut, AlertTriangle, BookOpen, Settings, ShieldAlert, Link2, Clock, Download } from "lucide-react"
 import { useAppwriteAuth } from "@/hooks/use-appwrite-auth"
 
 const STATS_FUNCTION_ID =
@@ -215,6 +215,14 @@ export function ModeratorDashboardPage() {
             >
               <ShieldAlert className="h-4 w-4" />
               Conflicts
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/moderator/export")}
+            >
+              <Download className="h-4 w-4" />
+              Export & Event
             </Button>
             <Button
               variant="outline"

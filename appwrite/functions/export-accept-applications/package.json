@@ -1,0 +1,9 @@
+{
+  "name": "export-accept-applications",
+  "version": "1.0.0",
+  "description": "Exports top-rated finished applications up to a limit, labels accepted users.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}

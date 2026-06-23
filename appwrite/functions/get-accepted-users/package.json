@@ -1,0 +1,9 @@
+{
+  "name": "get-accepted-users",
+  "version": "1.0.0",
+  "description": "Lists all users with the undergroundEventAccepted label.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}

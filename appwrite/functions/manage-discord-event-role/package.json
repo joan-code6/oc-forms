@@ -1,0 +1,9 @@
+{
+  "name": "manage-discord-event-role",
+  "version": "1.0.0",
+  "description": "Assign or remove the event participant Discord role from accepted users.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}

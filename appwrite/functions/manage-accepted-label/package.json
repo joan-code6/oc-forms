@@ -1,0 +1,9 @@
+{
+  "name": "manage-accepted-label",
+  "version": "1.0.0",
+  "description": "Add/remove/search the undergroundEventAccepted label on users.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}

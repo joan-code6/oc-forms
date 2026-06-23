@@ -1,0 +1,9 @@
+{
+  "name": "export-whitelist",
+  "version": "1.0.0",
+  "description": "Exports Minecraft usernames of accepted users as a whitelist.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}
