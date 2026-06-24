@@ -87,12 +87,16 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
+    const offset = typeof body.offset === "number" ? body.offset : 0;
+    const limit = typeof body.limit === "number" ? body.limit : 50;
+
     const reviews = await databases.listDocuments(
       DATABASE_ID,
       REVIEWS_COLLECTION_ID,
       [
         Query.orderDesc("reviewedAt"),
-        Query.limit(50),
+        Query.offset(offset),
+        Query.limit(limit),
       ]
     );
 
@@ -111,7 +115,7 @@ module.exports = async function (context) {
 
     const applicationIds = [...new Set(formatted.map((r) => r.applicationId).filter(Boolean))];
     if (applicationIds.length > 0) {
-      const appQueries = [Query.equal("$id", applicationIds), Query.limit(100)];
+      const appQueries = [Query.equal("$id", applicationIds), Query.limit(5000)];
       if (body.status && typeof body.status === "string") {
         appQueries.push(Query.equal("status", body.status));
       }

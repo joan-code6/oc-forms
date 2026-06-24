@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ArrowLeft, AlertTriangle, ShieldCheck, Search, Pencil, User, ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from "lucide-react"
+import { ArrowLeft, AlertTriangle, ShieldCheck, Search, Pencil, User, ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, Loader2 } from "lucide-react"
 
 const REVIEWS_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_REVIEWS_ID || "get-mod-reviews"
@@ -50,7 +50,9 @@ export function ModeratorAuditPage() {
 
   const [reviews, setReviews] = useState<ReviewData[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
   const [search, setSearch] = useState("")
   const [reviewerFilter, setReviewerFilter] = useState("all")
   const [zoneFilter, setZoneFilter] = useState("all")
@@ -61,9 +63,12 @@ export function ModeratorAuditPage() {
   useEffect(() => {
     if (!allowed) return
     let cancelled = false
-    callFunction<ReviewsResult>(REVIEWS_FUNCTION_ID)
+    callFunction<ReviewsResult>(REVIEWS_FUNCTION_ID, { offset: 0, limit: 50 })
       .then((result) => {
-        if (!cancelled) setReviews(result.reviews)
+        if (!cancelled) {
+          setReviews(result.reviews)
+          setTotal(result.total)
+        }
       })
       .catch((e) => {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : "Failed to load reviews.")
@@ -73,6 +78,21 @@ export function ModeratorAuditPage() {
       })
     return () => { cancelled = true }
   }, [allowed])
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    try {
+      const result = await callFunction<ReviewsResult>(REVIEWS_FUNCTION_ID, {
+        offset: reviews.length,
+        limit: 50,
+      })
+      setReviews((prev) => [...prev, ...result.reviews])
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Failed to load more reviews.")
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const reviewers = useMemo(() => {
     const names = new Set(reviews.map((r) => r.moderatorDiscordUsername).filter(Boolean))
@@ -255,90 +275,110 @@ export function ModeratorAuditPage() {
           <p className="text-white/40">No reviews found.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredReviews.map((review) => (
-            <Card key={review.id} className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex flex-col sm:flex-row">
-                  <div className="flex flex-1 items-start gap-4 p-5">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white/5">
-                      {review.application ? (
-                        <img
-                          src={review.application.skinUrl}
-                          alt={`${review.application.minecraftIGN} skin`}
-                          className="h-10 w-auto rounded"
-                        />
-                      ) : (
-                        <User className="h-6 w-6 text-white/30" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button
-                          className="text-sm font-medium text-white hover:text-brand transition-colors flex items-center gap-1"
-                          onClick={() =>
-                            navigate("/moderator/review", {
-                              state: { applicationId: review.applicationId },
-                            })
-                          }
-                          title="Open in review"
-                        >
-                          {review.application?.minecraftIGN || "Unknown applicant"}
-                          <ExternalLink className="h-3 w-3 text-white/40" />
-                        </button>
-                        <span className="text-sm text-white/40">
-                          {review.application?.discordUsername || "No discord"}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3 text-sm">
-                        <span className="text-white/50">
-                          {new Date(review.reviewedAt).toLocaleDateString()}
-                        </span>
-                        <span
-                          className="font-medium"
-                          style={{
-                            color:
-                              review.ratingZone === "red"
-                                ? "#ef4444"
-                                : review.ratingZone === "orange"
-                                  ? "#f97316"
-                                  : review.ratingZone === "yellow"
-                                    ? "#eab308"
-                                    : "#22c55e",
-                          }}
-                        >
-                          {review.rating}%
-                        </span>
-                        <span className="text-white/60">
-                          by {review.moderatorDiscordUsername}
-                        </span>
-                        {review.application?.status && (
-                          <span className="rounded bg-white/10 px-2 py-0.5 text-xs text-white/70 capitalize">
-                            {review.application.status}
-                          </span>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            {filteredReviews.map((review) => (
+              <Card key={review.id} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex flex-col sm:flex-row">
+                    <div className="flex flex-1 items-start gap-4 p-5">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                        {review.application ? (
+                          <img
+                            src={review.application.skinUrl}
+                            alt={`${review.application.minecraftIGN} skin`}
+                            className="h-10 w-auto rounded"
+                          />
+                        ) : (
+                          <User className="h-6 w-6 text-white/30" />
                         )}
                       </div>
-                      {review.moderatorNote && (
-                        <p className="line-clamp-2 text-sm text-white/70">
-                          {review.moderatorNote}
-                        </p>
-                      )}
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            className="text-sm font-medium text-white hover:text-brand transition-colors flex items-center gap-1"
+                            onClick={() =>
+                              navigate("/moderator/review", {
+                                state: { applicationId: review.applicationId },
+                              })
+                            }
+                            title="Open in review"
+                          >
+                            {review.application?.minecraftIGN || "Unknown applicant"}
+                            <ExternalLink className="h-3 w-3 text-white/40" />
+                          </button>
+                          <span className="text-sm text-white/40">
+                            {review.application?.discordUsername || "No discord"}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                          <span className="text-white/50">
+                            {new Date(review.reviewedAt).toLocaleDateString()}
+                          </span>
+                          <span
+                            className="font-medium"
+                            style={{
+                              color:
+                                review.ratingZone === "red"
+                                  ? "#ef4444"
+                                  : review.ratingZone === "orange"
+                                    ? "#f97316"
+                                    : review.ratingZone === "yellow"
+                                      ? "#eab308"
+                                      : "#22c55e",
+                            }}
+                          >
+                            {review.rating}%
+                          </span>
+                          <span className="text-white/60">
+                            by {review.moderatorDiscordUsername}
+                          </span>
+                          {review.application?.status && (
+                            <span className="rounded bg-white/10 px-2 py-0.5 text-xs text-white/70 capitalize">
+                              {review.application.status}
+                            </span>
+                          )}
+                        </div>
+                        {review.moderatorNote && (
+                          <p className="line-clamp-2 text-sm text-white/70">
+                            {review.moderatorNote}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end border-t border-white/5 p-3 sm:border-t-0 sm:border-l sm:p-5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/moderator/audit/${review.id}`)}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-end border-t border-white/5 p-3 sm:border-t-0 sm:border-l sm:p-5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/moderator/audit/${review.id}`)}
-                    >
-                      <Pencil className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {total > reviews.length && (
+            <div className="flex flex-col items-center gap-3 pt-2">
+              <p className="text-sm text-white/40">
+                Showing {reviews.length} of {total} reviews
+              </p>
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={loadingMore}
+                onClick={loadMore}
+                className="gap-2"
+              >
+                {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+                {loadingMore ? "Loading..." : "Load more"}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
