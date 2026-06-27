@@ -24,16 +24,42 @@ export function AuthCallback() {
   const returnPath = useRef(getReturnPath(searchParams))
   const [status, setStatus] = useState<"loading" | "done" | "error">("loading")
   const [storageIssue, setStorageIssue] = useState(false)
+  const [oauthError, setOauthError] = useState<{ message: string; code?: string } | null>(null)
   const processed = useRef(false)
   const retryCount = useRef(0)
 
   const tryCreateSession = useCallback(() => {
     const userId = searchParams.get("userId")
     const secret = searchParams.get("secret")
-    if (!userId || !secret) {
-      navigate(returnPath.current, { replace: true })
+    const type = searchParams.get("type")
+    const errorMsg = searchParams.get("message")
+    const errorCode = searchParams.get("code")
+
+    console.warn("[auth-callback] params:", {
+      hasUserId: !!userId,
+      hasSecret: !!secret,
+      type: type || "(none)",
+      message: errorMsg || "(none)",
+      code: errorCode || "(none)",
+    })
+
+    if (type === "failure" || errorMsg) {
+      setOauthError({
+        message: errorMsg || "Discord authentication was denied or failed.",
+        code: errorCode || undefined,
+      })
+      setStatus("error")
       return
     }
+
+    if (!userId || !secret) {
+      setOauthError({
+        message: "No authentication tokens received. Discord authentication may have failed or the link may be invalid.",
+      })
+      setStatus("error")
+      return
+    }
+
     createSessionAndStore(userId, secret)
       .then((session) => {
         if (session) {
@@ -77,6 +103,7 @@ export function AuthCallback() {
     }
     setStatus("loading")
     setStorageIssue(false)
+    setOauthError(null)
     tryCreateSession()
   }
 
@@ -96,26 +123,50 @@ export function AuthCallback() {
           <AlertTriangle className="h-7 w-7 text-red-400" />
         </div>
         <p className="text-lg font-semibold text-red-400">Authentication failed</p>
-        <p className="max-w-md text-sm leading-relaxed text-white/40">
-          {storageIssue
-            ? "Your browser's privacy settings are blocking site storage or cookies. This prevents sign-in from working."
-            : "The session could not be created. This may be caused by browser privacy settings, an ad blocker, or a network issue."}
-        </p>
-        {storageIssue && (
-          <p className="max-w-md text-sm text-amber-300/80">
-            {isPrivacyBrowserLikely()
-              ? "Opera GX / Brave's tracker or ad blocker may be preventing the form from working. Disable the blocker for this site, or switch to Chrome / Edge / Firefox."
-              : "Private browsing or an extension may be blocking cookies or site storage. Allow them for this site or try another browser."}
-          </p>
+
+        {oauthError ? (
+          <>
+            <p className="max-w-md text-sm leading-relaxed text-white/50">
+              Discord sign-in did not complete successfully.
+            </p>
+            <div className="max-w-md rounded-lg border border-red-500/15 bg-red-500/5 px-4 py-3 text-left text-sm text-red-300/80">
+              <p className="font-medium text-red-300">
+                {oauthError.message}
+              </p>
+              {oauthError.code && (
+                <p className="mt-1 text-xs text-red-400/50">
+                  Code: {oauthError.code}
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="max-w-md text-sm leading-relaxed text-white/40">
+              {storageIssue
+                ? "Your browser's privacy settings are blocking site storage or cookies. This prevents sign-in from working."
+                : "The session could not be created. This may be caused by browser privacy settings, an ad blocker, or a network issue."}
+            </p>
+            {storageIssue && (
+              <p className="max-w-md text-sm text-amber-300/80">
+                {isPrivacyBrowserLikely()
+                  ? "Opera GX / Brave's tracker or ad blocker may be preventing the form from working. Disable the blocker for this site, or switch to Chrome / Edge / Firefox."
+                  : "Private browsing or an extension may be blocking cookies or site storage. Allow them for this site or try another browser."}
+              </p>
+            )}
+          </>
         )}
+
         <div className="mt-2 flex items-center gap-3">
-          <button
-            onClick={handleRetry}
-            className="inline-flex items-center gap-2 rounded-md bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Try again
-          </button>
+          {!oauthError && (
+            <button
+              onClick={handleRetry}
+              className="inline-flex items-center gap-2 rounded-md bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Try again
+            </button>
+          )}
           <button
             onClick={() => navigate(returnPath.current, { replace: true })}
             className="inline-flex items-center gap-2 rounded-md bg-white/5 px-4 py-2 text-sm text-white/50 hover:bg-white/10 transition-colors"

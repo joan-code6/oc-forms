@@ -114,6 +114,7 @@ export async function createSessionAndStore(userId: string, secret: string): Pro
 
     let sessionSecret = session.secret
     if (!sessionSecret) {
+      console.warn("[appwrite] createSession returned no secret, falling back to getSession('current')")
       const current = await acc.getSession("current").catch(() => null)
       sessionSecret = current?.secret || ""
     }
