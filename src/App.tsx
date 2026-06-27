@@ -17,6 +17,7 @@ import { PreviewImagesPage } from "@/pages/preview-images"
 import { InviteDashboardPage } from "@/pages/invite-dashboard"
 import { InviteRedeemPage } from "@/pages/invite-redeem"
 import { ModeratorExportPage } from "@/pages/moderator-export"
+import { DebugPage } from "@/pages/debug"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,7 @@ export default function App() {
                 <Route path="/preview-images" element={<PreviewImagesPage />} />
                 <Route path="/invites" element={<InviteDashboardPage />} />
                 <Route path="/invite/:code" element={<InviteRedeemPage />} />
+                <Route path="/debug" element={<DebugPage />} />
               </Routes>
             </main>
 

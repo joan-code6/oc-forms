@@ -187,6 +187,16 @@ export function AuthCallback() {
           </a>
           and open a ticket
         </p>
+        <p className="mt-2 text-xs text-white/20">
+          Or visit the{" "}
+          <button
+            onClick={() => navigate("/debug")}
+            className="text-brand hover:underline"
+          >
+            debug page
+          </button>{" "}
+          to copy diagnostic info for support.
+        </p>
       </div>
     )
   }

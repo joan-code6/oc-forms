@@ -310,6 +310,11 @@ function FormContent() {
                 ? "Opera GX / Brave's tracker or ad blocker may be preventing this form from working correctly. Please disable the blocker for this site, or switch to Chrome / Edge / Firefox."
                 : "It looks like private browsing or an extension is blocking cookies or site storage. Please allow them for this site or try another browser."}
             </p>
+            <p className="mt-2">
+              <a href="/debug" className="text-brand underline underline-offset-2 hover:text-brand/80">
+                Copy debug info for support
+              </a>
+            </p>
           </div>
         </div>
       )}
