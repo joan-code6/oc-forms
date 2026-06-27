@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react"
-import { getCurrentUser, discordLogin, logout, getSession } from "@/lib/appwrite"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { getCurrentUser, discordLogin, logout, getSession, shouldShowHelpPopup } from "@/lib/appwrite"
 import type { Models } from "appwrite"
+import { toast } from "sonner"
 
 export interface DiscordUser {
   id: string
@@ -10,10 +11,37 @@ export interface DiscordUser {
   raw: Models.User<Models.Preferences>
 }
 
+const HELP_DISMISSED_KEY = "outcraft-help-dismissed"
+
 export function useAppwriteAuth() {
   const [user, setUser] = useState<DiscordUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const helpShownRef = useRef(false)
+
+  const checkHelpPopup = useCallback(() => {
+    if (helpShownRef.current) return
+    try {
+      if (sessionStorage.getItem(HELP_DISMISSED_KEY) === "true") return
+    } catch { /* ignore */ }
+    if (shouldShowHelpPopup()) {
+      helpShownRef.current = true
+      toast("It seems like you've encountered an error...", {
+        description: "If you need help, create a ticket in our Discord server: discord.gg/outcraft",
+        duration: Infinity,
+        dismissible: true,
+        onDismiss: () => {
+          try { sessionStorage.setItem(HELP_DISMISSED_KEY, "true") } catch { /* ignore */ }
+        },
+        action: {
+          label: "Dismiss",
+          onClick: () => {
+            try { sessionStorage.setItem(HELP_DISMISSED_KEY, "true") } catch { /* ignore */ }
+          },
+        },
+      })
+    }
+  }, [])
 
   const checkSession = useCallback(async () => {
     try {
@@ -24,6 +52,7 @@ export function useAppwriteAuth() {
       if (!session) {
         setUser(null)
         setLoading(false)
+        checkHelpPopup()
         return
       }
       const currentUser = await getCurrentUser()
@@ -45,7 +74,7 @@ export function useAppwriteAuth() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [checkHelpPopup])
 
   useEffect(() => {
     let cancelled = false
@@ -59,6 +88,7 @@ export function useAppwriteAuth() {
         if (!session) {
           setUser(null)
           setLoading(false)
+          checkHelpPopup()
           return
         }
         const currentUser = await getCurrentUser()
@@ -73,19 +103,21 @@ export function useAppwriteAuth() {
           })
         } else {
           setUser(null)
+          checkHelpPopup()
         }
       } catch (e) {
         if (cancelled) return
         const msg = e instanceof Error ? e.message : "Failed to verify session"
         setError(msg + (msg.toLowerCase().includes("session") ? ". If you're using Opera GX or Brave, try disabling the tracker/ad blocker or use another browser." : ""))
         setUser(null)
+        checkHelpPopup()
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
     run()
     return () => { cancelled = true }
-  }, [])
+  }, [checkHelpPopup])
 
   const loginWithDiscord = useCallback(() => {
     discordLogin()
