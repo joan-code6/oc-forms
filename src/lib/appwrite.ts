@@ -186,9 +186,7 @@ export async function createSessionAndStore(userId: string, secret: string): Pro
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}))
-      if (import.meta.env.DEV) {
-        console.error("[appwrite] createSession failed:", response.status, err)
-      }
+      console.error("[appwrite] createSession failed:", response.status, err)
       incrementAuthErrorCount()
       return null
     }
