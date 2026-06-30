@@ -195,6 +195,13 @@ export async function createSessionAndStore(userId: string, secret: string): Pro
 
     const session: Models.Session = await response.json()
 
+    console.log("[appwrite] createSession response", {
+      status: response.status,
+      hasBodySecret: !!session.secret,
+      hasFallbackHeader: response.headers.has("x-fallback-cookies"),
+      responseHeaders: [...response.headers.keys()],
+    })
+
     let sessionSecret = session.secret || ""
 
     if (!sessionSecret) {
@@ -204,10 +211,18 @@ export async function createSessionAndStore(userId: string, secret: string): Pro
           const cookies = JSON.parse(fallbackCookies)
           for (const [name, value] of Object.entries(cookies)) {
             if (name.startsWith("a_session_")) {
-              sessionSecret = String(value)
+              try {
+                const decoded = JSON.parse(atob(String(value)))
+                if (decoded.secret) {
+                  sessionSecret = decoded.secret
+                  console.log("[appwrite] decoded session secret from x-fallback-cookies")
+                }
+              } catch {
+                sessionSecret = String(value)
+                console.log("[appwrite] using raw x-fallback-cookie value as session secret")
+              }
               storeSessionCookies(fallbackCookies)
               installFetchPatch()
-              console.log("[appwrite] session established via x-fallback-cookies")
               break
             }
           }
