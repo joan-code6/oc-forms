@@ -33,4 +33,4 @@ all_creds_you_will_ever_need
 scripts/
 
 # Archives / backups
-*.tar.gz
+*.tar.gz.worktrees/
