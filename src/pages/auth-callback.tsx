@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Loader2, AlertTriangle, RefreshCw, ExternalLink } from "lucide-react"
 import { createSessionAndStore } from "@/lib/appwrite"
-import { checkStorage, isPrivacyBrowserLikely } from "@/lib/storage-check"
+import { checkStorage, isAppwriteCrossOrigin, isPrivacyBrowserLikely, getBrowserHint } from "@/lib/storage-check"
 
 function getReturnPath(searchParams: URLSearchParams): string {
   const urlReturnTo = searchParams.get("returnTo")
@@ -24,6 +24,7 @@ export function AuthCallback() {
   const returnPath = useRef(getReturnPath(searchParams))
   const [status, setStatus] = useState<"loading" | "done" | "error">("loading")
   const [storageIssue, setStorageIssue] = useState(false)
+  const [isCrossOrigin, setIsCrossOrigin] = useState(false)
   const [oauthError, setOauthError] = useState<{ message: string; code?: string } | null>(null)
   const processed = useRef(false)
   const retryCount = useRef(0)
@@ -68,8 +69,10 @@ export function AuthCallback() {
           const storage = checkStorage()
           if (!storage.localStorage || !storage.cookies) {
             setStorageIssue(true)
+            setIsCrossOrigin(isAppwriteCrossOrigin())
           } else {
             setStorageIssue(false)
+            setIsCrossOrigin(isAppwriteCrossOrigin())
           }
           setStatus("error")
         }
@@ -103,6 +106,7 @@ export function AuthCallback() {
     }
     setStatus("loading")
     setStorageIssue(false)
+    setIsCrossOrigin(false)
     setOauthError(null)
     tryCreateSession()
   }
@@ -145,13 +149,20 @@ export function AuthCallback() {
             <p className="max-w-md text-sm leading-relaxed text-white/40">
               {storageIssue
                 ? "Your browser's privacy settings are blocking site storage or cookies. This prevents sign-in from working."
-                : "The session could not be created. This may be caused by browser privacy settings, an ad blocker, or a network issue."}
+                : isCrossOrigin
+                  ? "Your browser is blocking third-party cookies from the authentication server. The login session could not be established."
+                  : "The session could not be created. This may be caused by browser privacy settings, an ad blocker, or a network issue."}
             </p>
             {storageIssue && (
               <p className="max-w-md text-sm text-amber-300/80">
                 {isPrivacyBrowserLikely()
-                  ? "Opera GX / Brave's tracker or ad blocker may be preventing the form from working. Disable the blocker for this site, or switch to Chrome / Edge / Firefox."
+                  ? getBrowserHint()
                   : "Private browsing or an extension may be blocking cookies or site storage. Allow them for this site or try another browser."}
+              </p>
+            )}
+            {!storageIssue && isCrossOrigin && (
+              <p className="max-w-md text-sm text-amber-300/80">
+                {getBrowserHint()}
               </p>
             )}
           </>

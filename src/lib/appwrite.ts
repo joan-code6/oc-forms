@@ -112,21 +112,54 @@ export async function createSessionAndStore(userId: string, secret: string): Pro
     const acc = getAccount()
     const session = await acc.createSession({ userId, secret })
 
+    console.log("[appwrite] createSession response:", {
+      $id: session.$id,
+      userId: session.userId,
+      hasSecret: !!session.secret,
+      provider: session.provider,
+      providerAccessTokenExpiry: session.providerAccessTokenExpiry,
+      expire: session.expire,
+      current: session.current,
+      allKeys: Object.keys(session),
+    })
+
     let sessionSecret = session.secret
     if (!sessionSecret) {
       console.warn("[appwrite] createSession returned no secret, falling back to getSession('current')")
       const current = await acc.getSession("current").catch(() => null)
       sessionSecret = current?.secret || ""
+
+      if (!sessionSecret) {
+        console.warn("[appwrite] getSession('current') also failed, trying account.get()")
+        const user = await acc.get().catch(() => null)
+        if (user) {
+          console.log("[appwrite] account.get() succeeded, user is authenticated via cookies — creating JWT for persistence")
+          try {
+            const jwt = await acc.createJWT()
+            if (jwt.jwt) {
+              sessionSecret = jwt.jwt
+              console.log("[appwrite] successfully created JWT as cookie-less fallback")
+            }
+          } catch (e) {
+            console.warn("[appwrite] createJWT() also failed:", e)
+          }
+        } else {
+          console.warn("[appwrite] all session recovery methods failed — likely third-party cookie blocking")
+        }
+      }
     }
 
     if (sessionSecret) {
       storeSessionSecret(sessionSecret)
       applySessionSecret(sessionSecret)
+      resetAuthErrorCount()
+      return session
     }
 
-    resetAuthErrorCount()
-    return session
-  } catch {
+    console.warn("[appwrite] session created server-side but no secret could be obtained client-side")
+    return null
+  } catch (e) {
+    console.error("[appwrite] createSession network error:", e)
     incrementAuthErrorCount()
     return null
   }
