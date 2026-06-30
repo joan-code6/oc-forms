@@ -76,10 +76,12 @@ export function getAccount(): Account {
 }
 
 export function discordLogin(returnTo?: string) {
-  const stateParam = returnTo || window.location.pathname
-  const redirectUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(stateParam)}`
+  const returnPath = returnTo || window.location.pathname
+  try { sessionStorage.setItem("auth_return_to", returnPath) } catch { /* ignore */ }
+  try { localStorage.setItem("auth_return_to", returnPath) } catch { /* ignore */ }
+  const redirectUrl = `${window.location.origin}/auth/callback`
   const acc = getAccount()
-  acc.createOAuth2Token(OAuthProvider.Discord, redirectUrl, redirectUrl)
+  acc.createOAuth2Session(OAuthProvider.Discord, redirectUrl, redirectUrl)
 }
 
 export async function getCurrentUser() {

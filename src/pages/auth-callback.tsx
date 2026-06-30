@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Loader2, AlertTriangle, RefreshCw, ExternalLink } from "lucide-react"
-import { createSessionAndStore } from "@/lib/appwrite"
-import { checkStorage, isAppwriteCrossOrigin, isPrivacyBrowserLikely, getBrowserHint } from "@/lib/storage-check"
+import { createSessionAndStore, getCurrentUser } from "@/lib/appwrite"
 
 function getReturnPath(searchParams: URLSearchParams): string {
   const urlReturnTo = searchParams.get("returnTo")
@@ -24,7 +23,6 @@ export function AuthCallback() {
   const returnPath = useRef(getReturnPath(searchParams))
   const [status, setStatus] = useState<"loading" | "done" | "error">("loading")
   const [storageIssue, setStorageIssue] = useState(false)
-  const [isCrossOrigin, setIsCrossOrigin] = useState(false)
   const [oauthError, setOauthError] = useState<{ message: string; code?: string } | null>(null)
   const processed = useRef(false)
   const retryCount = useRef(0)
@@ -53,33 +51,29 @@ export function AuthCallback() {
       return
     }
 
-    if (!userId || !secret) {
-      setOauthError({
-        message: "No authentication tokens received. Discord authentication may have failed or the link may be invalid.",
-      })
-      setStatus("error")
+    if (userId && secret) {
+      createSessionAndStore(userId, secret)
+        .then((session) => {
+          if (session) {
+            navigate(returnPath.current, { replace: true })
+          } else {
+            setStorageIssue(true)
+            setStatus("error")
+          }
+        })
+        .catch(() => setStatus("error"))
       return
     }
 
-    createSessionAndStore(userId, secret)
-      .then((session) => {
-        if (session) {
+    getCurrentUser()
+      .then((user) => {
+        if (user) {
           navigate(returnPath.current, { replace: true })
         } else {
-          const storage = checkStorage()
-          if (!storage.localStorage || !storage.cookies) {
-            setStorageIssue(true)
-            setIsCrossOrigin(isAppwriteCrossOrigin())
-          } else {
-            setStorageIssue(false)
-            setIsCrossOrigin(isAppwriteCrossOrigin())
-          }
           setStatus("error")
         }
       })
-      .catch(() => {
-        setStatus("error")
-      })
+      .catch(() => setStatus("error"))
   }, [searchParams, navigate])
 
   useEffect(() => {
@@ -106,7 +100,6 @@ export function AuthCallback() {
     }
     setStatus("loading")
     setStorageIssue(false)
-    setIsCrossOrigin(false)
     setOauthError(null)
     tryCreateSession()
   }
@@ -149,20 +142,11 @@ export function AuthCallback() {
             <p className="max-w-md text-sm leading-relaxed text-white/40">
               {storageIssue
                 ? "Your browser's privacy settings are blocking site storage or cookies. This prevents sign-in from working."
-                : isCrossOrigin
-                  ? "Your browser is blocking third-party cookies from the authentication server. The login session could not be established."
-                  : "The session could not be created. This may be caused by browser privacy settings, an ad blocker, or a network issue."}
+                : "The session could not be established. This may be caused by browser privacy settings, an ad blocker, or a network issue."}
             </p>
             {storageIssue && (
               <p className="max-w-md text-sm text-amber-300/80">
-                {isPrivacyBrowserLikely()
-                  ? getBrowserHint()
-                  : "Private browsing or an extension may be blocking cookies or site storage. Allow them for this site or try another browser."}
-              </p>
-            )}
-            {!storageIssue && isCrossOrigin && (
-              <p className="max-w-md text-sm text-amber-300/80">
-                {getBrowserHint()}
+                In Firefox, disable Enhanced Tracking Protection for this site, or try Chrome / Edge.
               </p>
             )}
           </>
