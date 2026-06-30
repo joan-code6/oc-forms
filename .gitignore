@@ -31,3 +31,6 @@ all_creds_you_will_ever_need
 
 # Scripts (may contain secrets)
 scripts/
+
+# Archives / backups
+*.tar.gz

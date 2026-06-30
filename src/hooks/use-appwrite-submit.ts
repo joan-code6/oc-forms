@@ -3,7 +3,7 @@ import { Functions } from "appwrite"
 import { getClient } from "@/lib/appwrite"
 
 const FUNCTION_ID =
-  import.meta.env.VITE_APPWRITE_FUNCTION_SUBMIT_ID || "6a3573730031e3cd7861"
+  import.meta.env.VITE_APPWRITE_FUNCTION_SUBMIT_ID || ""
 
 interface SubmitPayload {
   minecraftIGN: string

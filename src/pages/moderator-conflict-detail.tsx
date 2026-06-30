@@ -8,7 +8,7 @@ import { callFunction } from "@/lib/functions"
 import { ArrowLeft, AlertTriangle, Gavel, Save } from "lucide-react"
 
 const CONFLICT_DETAIL_FUNCTION_ID =
-  import.meta.env.VITE_APPWRITE_FUNCTION_CONFLICT_DETAIL_ID || "6a37e8d18b164b9de904"
+  import.meta.env.VITE_APPWRITE_FUNCTION_CONFLICT_DETAIL_ID || ""
 const RESOLVE_CONFLICT_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_RESOLVE_CONFLICT_ID || "resolve-conflict"
 

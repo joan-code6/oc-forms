@@ -1,7 +1,7 @@
 {
-    "projectId": "69be75ef00267961b515",
+    "projectId": "your-project-id",
     "projectName": "outcraft-form",
-    "endpoint": "https://fra.cloud.appwrite.io/v1",
+    "endpoint": "https://cloud.appwrite.io/v1",
     "includes": {
         "functions": "appwrite/functions.json"
     }

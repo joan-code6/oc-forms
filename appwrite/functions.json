@@ -156,7 +156,7 @@
         ]
     },
     {
-        "$id": "6a37e8d18b164b9de904",
+        "$id": "get-conflict-detail",
         "name": "get-conflict-detail",
         "runtime": "node-18.0",
         "entrypoint": "index.js",
