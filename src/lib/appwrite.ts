@@ -4,70 +4,11 @@ const ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT || "https://cloud.appwri
 const PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID || ""
 const SESSION_SECRET_KEY = "outcraft-appwrite-session-secret"
 const SESSION_SECRET_SESSION_KEY = "outcraft-appwrite-session-secret-session"
-const SESSION_COOKIES_KEY = "outcraft-appwrite-session-cookies"
 const AUTH_ERROR_COUNT_KEY = "outcraft-auth-error-count"
 const AUTH_ERROR_THRESHOLD = 3
 
-const ENDPOINT_ORIGIN = (() => { try { return new URL(ENDPOINT).origin } catch { return ENDPOINT } })()
-
 let client: Client
 let account: Account
-let sessionCookies: Record<string, string> | null = null
-let fetchPatched = false
-
-function installFetchPatch() {
-  if (fetchPatched) return
-  fetchPatched = true
-
-  function hasFallbackCookie(headers: HeadersInit | undefined): boolean {
-    if (!headers) return false
-    if (headers instanceof Headers) {
-      return headers.has("x-fallback-cookies")
-    }
-    if (Array.isArray(headers)) {
-      return headers.some(([k]) => k.toLowerCase() === "x-fallback-cookies")
-    }
-    return Object.keys(headers).some((k) => k.toLowerCase() === "x-fallback-cookies")
-  }
-
-  const originalFetch = window.fetch.bind(window)
-  window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    const url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input)
-    if (sessionCookies && url.startsWith(ENDPOINT_ORIGIN) && !hasFallbackCookie(init?.headers)) {
-      init = { ...init }
-      init.headers = new Headers(init.headers)
-      init.headers.set("x-fallback-cookies", JSON.stringify(sessionCookies))
-    }
-    return originalFetch(input, init)
-  }
-}
-
-function loadStoredSessionCookies(): Record<string, string> | null {
-  try {
-    const stored = localStorage.getItem(SESSION_COOKIES_KEY)
-    if (stored) return JSON.parse(stored)
-  } catch { /* ignore */ }
-  try {
-    const stored = sessionStorage.getItem(SESSION_COOKIES_KEY)
-    if (stored) return JSON.parse(stored)
-  } catch { /* ignore */ }
-  return null
-}
-
-function storeSessionCookies(cookiesJson: string) {
-  sessionCookies = JSON.parse(cookiesJson)
-  try { localStorage.setItem(SESSION_COOKIES_KEY, cookiesJson) } catch { /* ignore */ }
-  try { sessionStorage.setItem(SESSION_COOKIES_KEY, cookiesJson) } catch { /* ignore */ }
-}
-
-function clearSessionCookies() {
-  sessionCookies = null
-  try { localStorage.removeItem(SESSION_COOKIES_KEY) } catch { /* ignore */ }
-  try { sessionStorage.removeItem(SESSION_COOKIES_KEY) } catch { /* ignore */ }
-}
-
-sessionCookies = loadStoredSessionCookies()
-if (sessionCookies) installFetchPatch()
 
 function loadStoredSessionSecret(): string | null {
   try {
@@ -105,7 +46,6 @@ export function clearStoredSessionSecret() {
   } catch {
     /* ignore */
   }
-  clearSessionCookies()
 }
 
 export function applySessionSecret(secret: string) {
@@ -171,76 +111,30 @@ export async function logout() {
 
 export async function createSessionAndStore(userId: string, secret: string): Promise<Models.Session | null> {
   try {
-    clearSessionCookies()
-
-    const response = await fetch(`${ENDPOINT}/account/sessions/token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Appwrite-Project": PROJECT_ID,
-        "X-Appwrite-Response-Format": "1.6.0",
-        "X-Fallback-Cookies": window.location.origin,
-      },
-      body: JSON.stringify({ userId, secret }),
-    })
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}))
-      console.error("[appwrite] createSession failed:", response.status, err)
-      incrementAuthErrorCount()
-      return null
-    }
-
-    const session: Models.Session = await response.json()
+    const acc = getAccount()
+    const session = await acc.createSession({ userId, secret })
 
     console.log("[appwrite] createSession response", {
-      status: response.status,
-      hasBodySecret: !!session.secret,
-      hasFallbackHeader: response.headers.has("x-fallback-cookies"),
-      responseHeaders: [...response.headers.keys()],
+      $id: session.$id,
+      userId: session.userId,
+      hasSecret: !!session.secret,
+      provider: session.provider,
+      expire: session.expire,
+      current: session.current,
     })
 
-    let sessionSecret = session.secret || ""
-
-    if (!sessionSecret) {
-      const fallbackCookies = response.headers.get("x-fallback-cookies")
-      if (fallbackCookies) {
-        try {
-          const cookies = JSON.parse(fallbackCookies)
-          for (const [name, value] of Object.entries(cookies)) {
-            if (name.startsWith("a_session_")) {
-              try {
-                const decoded = JSON.parse(atob(String(value)))
-                if (decoded.secret) {
-                  sessionSecret = decoded.secret
-                  console.log("[appwrite] decoded session secret from x-fallback-cookies")
-                }
-              } catch {
-                sessionSecret = String(value)
-                console.log("[appwrite] using raw x-fallback-cookie value as session secret")
-              }
-              storeSessionCookies(fallbackCookies)
-              installFetchPatch()
-              break
-            }
-          }
-        } catch (e) {
-          console.warn("[appwrite] failed to parse x-fallback-cookies:", e)
-        }
-      }
-    }
-
-    if (sessionSecret) {
-      storeSessionSecret(sessionSecret)
-      applySessionSecret(sessionSecret)
+    if (session.secret) {
+      storeSessionSecret(session.secret)
+      applySessionSecret(session.secret)
       resetAuthErrorCount()
-      return session
+    } else {
+      console.warn("[appwrite] createSession returned no secret; SDK fallback cookies should handle auth")
     }
 
-    console.warn("[appwrite] session created server-side but no secret could be obtained client-side")
-    return null
+    return session
   } catch (e) {
-    console.error("[appwrite] createSession network error:", e)
+    const err = e instanceof Error ? e.message : String(e)
+    console.error("[appwrite] createSession failed:", err, e)
     incrementAuthErrorCount()
     return null
   }
