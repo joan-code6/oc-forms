@@ -35,7 +35,7 @@ Admins and moderators can access this page via:
 
 ## How It Helps
 
-Based on the conversation with Joan and Skully, this page solves:
+This page solves:
 
 1. **Finding NA people**: Timezone filter makes it easy to locate applicants in specific regions
 2. **Tracking unscored applications**: Clear visibility into which applications still need review

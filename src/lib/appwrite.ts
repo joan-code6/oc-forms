@@ -112,16 +112,18 @@ export async function createSessionAndStore(userId: string, secret: string): Pro
     const acc = getAccount()
     const session = await acc.createSession({ userId, secret })
 
-    console.log("[appwrite] createSession response:", {
-      $id: session.$id,
-      userId: session.userId,
-      hasSecret: !!session.secret,
-      provider: session.provider,
-      providerAccessTokenExpiry: session.providerAccessTokenExpiry,
-      expire: session.expire,
-      current: session.current,
-      allKeys: Object.keys(session),
-    })
+    if (import.meta.env.DEV) {
+      console.log("[appwrite] createSession response:", {
+        $id: session.$id,
+        userId: session.userId,
+        hasSecret: !!session.secret,
+        provider: session.provider,
+        providerAccessTokenExpiry: session.providerAccessTokenExpiry,
+        expire: session.expire,
+        current: session.current,
+        allKeys: Object.keys(session),
+      })
+    }
 
     let sessionSecret = session.secret
     if (!sessionSecret) {
