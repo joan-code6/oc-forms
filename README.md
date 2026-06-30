@@ -73,3 +73,7 @@ npm run preview
 ## license
 
 idk MIT? idk tbh
+
+## AI Decleration
+I use AI heavily but not irresponsibly!
+I do not VibeCode as i review all code, have a good understanding of the projects structure and decide over the main aspects of the project.
