@@ -22,14 +22,19 @@ function installFetchPatch() {
   const originalFetch = window.fetch.bind(window)
   window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input)
-    if (sessionCookies && url.startsWith(ENDPOINT_ORIGIN)) {
+    const isAppwrite = url.startsWith(ENDPOINT_ORIGIN)
+    console.log("[fetch-patch] intercepting:", { isAppwrite, hasCookies: !!sessionCookies, url })
+    if (sessionCookies && isAppwrite) {
       const existingHeader = init?.headers instanceof Headers
         ? init.headers.get("x-fallback-cookies")
         : undefined
+      console.log("[fetch-patch] existing x-fallback-cookies:", existingHeader || "(none)")
       if (!existingHeader) {
         init = { ...init }
         init.headers = new Headers(init.headers)
-        init.headers.set("x-fallback-cookies", JSON.stringify(sessionCookies))
+        const cookieJson = JSON.stringify(sessionCookies)
+        init.headers.set("x-fallback-cookies", cookieJson)
+        console.log("[fetch-patch] injected x-fallback-cookies, length:", cookieJson.length)
       }
     }
     return originalFetch(input, init)
