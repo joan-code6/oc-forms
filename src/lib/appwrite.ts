@@ -79,9 +79,9 @@ export function discordLogin(returnTo?: string) {
   const returnPath = returnTo || window.location.pathname
   try { sessionStorage.setItem("auth_return_to", returnPath) } catch { /* ignore */ }
   try { localStorage.setItem("auth_return_to", returnPath) } catch { /* ignore */ }
-  const redirectUrl = `${window.location.origin}/auth/callback`
+  const redirectUrl = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnPath)}`
   const acc = getAccount()
-  acc.createOAuth2Session(OAuthProvider.Discord, redirectUrl, redirectUrl)
+  acc.createOAuth2Token(OAuthProvider.Discord, redirectUrl, redirectUrl)
 }
 
 export async function getCurrentUser() {
@@ -111,8 +111,27 @@ export async function logout() {
 
 export async function createSessionAndStore(userId: string, secret: string): Promise<Models.Session | null> {
   try {
-    const acc = getAccount()
-    const session = await acc.createSession({ userId, secret })
+    const response = await fetch(`${ENDPOINT}/account/sessions/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Appwrite-Project": PROJECT_ID,
+        "X-Appwrite-Response-Format": "1.6.0",
+        "X-Fallback-Cookies": window.location.origin,
+      },
+      body: JSON.stringify({ userId, secret }),
+    })
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      if (import.meta.env.DEV) {
+        console.error("[appwrite] createSession failed:", response.status, err)
+      }
+      incrementAuthErrorCount()
+      return null
+    }
+
+    const session: Models.Session = await response.json()
 
     if (import.meta.env.DEV) {
       console.log("[appwrite] createSession response:", {
@@ -120,35 +139,28 @@ export async function createSessionAndStore(userId: string, secret: string): Pro
         userId: session.userId,
         hasSecret: !!session.secret,
         provider: session.provider,
-        providerAccessTokenExpiry: session.providerAccessTokenExpiry,
-        expire: session.expire,
-        current: session.current,
         allKeys: Object.keys(session),
       })
     }
 
-    let sessionSecret = session.secret
-    if (!sessionSecret) {
-      console.warn("[appwrite] createSession returned no secret, falling back to getSession('current')")
-      const current = await acc.getSession("current").catch(() => null)
-      sessionSecret = current?.secret || ""
+    let sessionSecret = session.secret || ""
 
-      if (!sessionSecret) {
-        console.warn("[appwrite] getSession('current') also failed, trying account.get()")
-        const user = await acc.get().catch(() => null)
-        if (user) {
-          console.log("[appwrite] account.get() succeeded, user is authenticated via cookies — creating JWT for persistence")
-          try {
-            const jwt = await acc.createJWT()
-            if (jwt.jwt) {
-              sessionSecret = jwt.jwt
-              console.log("[appwrite] successfully created JWT as cookie-less fallback")
+    if (!sessionSecret) {
+      const fallbackCookies = response.headers.get("x-fallback-cookies")
+      if (fallbackCookies) {
+        try {
+          const cookies = JSON.parse(fallbackCookies)
+          for (const [name, value] of Object.entries(cookies)) {
+            if (name.startsWith("a_session_")) {
+              sessionSecret = String(value)
+              if (import.meta.env.DEV) {
+                console.log("[appwrite] extracted session from x-fallback-cookies:", name)
+              }
+              break
             }
-          } catch (e) {
-            console.warn("[appwrite] createJWT() also failed:", e)
           }
-        } else {
-          console.warn("[appwrite] all session recovery methods failed — likely third-party cookie blocking")
+        } catch (e) {
+          console.warn("[appwrite] failed to parse x-fallback-cookies:", e)
         }
       }
     }
