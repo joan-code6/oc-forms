@@ -19,23 +19,24 @@ function installFetchPatch() {
   if (fetchPatched) return
   fetchPatched = true
 
+  function hasFallbackCookie(headers: HeadersInit | undefined): boolean {
+    if (!headers) return false
+    if (headers instanceof Headers) {
+      return headers.has("x-fallback-cookies")
+    }
+    if (Array.isArray(headers)) {
+      return headers.some(([k]) => k.toLowerCase() === "x-fallback-cookies")
+    }
+    return Object.keys(headers).some((k) => k.toLowerCase() === "x-fallback-cookies")
+  }
+
   const originalFetch = window.fetch.bind(window)
   window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input)
-    const isAppwrite = url.startsWith(ENDPOINT_ORIGIN)
-    console.log("[fetch-patch] intercepting:", { isAppwrite, hasCookies: !!sessionCookies, url })
-    if (sessionCookies && isAppwrite) {
-      const existingHeader = init?.headers instanceof Headers
-        ? init.headers.get("x-fallback-cookies")
-        : undefined
-      console.log("[fetch-patch] existing x-fallback-cookies:", existingHeader || "(none)")
-      if (!existingHeader) {
-        init = { ...init }
-        init.headers = new Headers(init.headers)
-        const cookieJson = JSON.stringify(sessionCookies)
-        init.headers.set("x-fallback-cookies", cookieJson)
-        console.log("[fetch-patch] injected x-fallback-cookies, length:", cookieJson.length)
-      }
+    if (sessionCookies && url.startsWith(ENDPOINT_ORIGIN) && !hasFallbackCookie(init?.headers)) {
+      init = { ...init }
+      init.headers = new Headers(init.headers)
+      init.headers.set("x-fallback-cookies", JSON.stringify(sessionCookies))
     }
     return originalFetch(input, init)
   }
@@ -170,6 +171,8 @@ export async function logout() {
 
 export async function createSessionAndStore(userId: string, secret: string): Promise<Models.Session | null> {
   try {
+    clearSessionCookies()
+
     const response = await fetch(`${ENDPOINT}/account/sessions/token`, {
       method: "POST",
       headers: {
