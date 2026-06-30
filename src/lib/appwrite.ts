@@ -4,11 +4,64 @@ const ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT || "https://cloud.appwri
 const PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID || ""
 const SESSION_SECRET_KEY = "outcraft-appwrite-session-secret"
 const SESSION_SECRET_SESSION_KEY = "outcraft-appwrite-session-secret-session"
+const SESSION_COOKIES_KEY = "outcraft-appwrite-session-cookies"
 const AUTH_ERROR_COUNT_KEY = "outcraft-auth-error-count"
 const AUTH_ERROR_THRESHOLD = 3
 
+const ENDPOINT_ORIGIN = (() => { try { return new URL(ENDPOINT).origin } catch { return ENDPOINT } })()
+
 let client: Client
 let account: Account
+let sessionCookies: Record<string, string> | null = null
+let fetchPatched = false
+
+function installFetchPatch() {
+  if (fetchPatched) return
+  fetchPatched = true
+
+  const originalFetch = window.fetch.bind(window)
+  window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input)
+    if (sessionCookies && url.startsWith(ENDPOINT_ORIGIN)) {
+      const existingHeader = init?.headers instanceof Headers
+        ? init.headers.get("x-fallback-cookies")
+        : undefined
+      if (!existingHeader) {
+        init = { ...init }
+        init.headers = new Headers(init.headers)
+        init.headers.set("x-fallback-cookies", JSON.stringify(sessionCookies))
+      }
+    }
+    return originalFetch(input, init)
+  }
+}
+
+function loadStoredSessionCookies(): Record<string, string> | null {
+  try {
+    const stored = localStorage.getItem(SESSION_COOKIES_KEY)
+    if (stored) return JSON.parse(stored)
+  } catch { /* ignore */ }
+  try {
+    const stored = sessionStorage.getItem(SESSION_COOKIES_KEY)
+    if (stored) return JSON.parse(stored)
+  } catch { /* ignore */ }
+  return null
+}
+
+function storeSessionCookies(cookiesJson: string) {
+  sessionCookies = JSON.parse(cookiesJson)
+  try { localStorage.setItem(SESSION_COOKIES_KEY, cookiesJson) } catch { /* ignore */ }
+  try { sessionStorage.setItem(SESSION_COOKIES_KEY, cookiesJson) } catch { /* ignore */ }
+}
+
+function clearSessionCookies() {
+  sessionCookies = null
+  try { localStorage.removeItem(SESSION_COOKIES_KEY) } catch { /* ignore */ }
+  try { sessionStorage.removeItem(SESSION_COOKIES_KEY) } catch { /* ignore */ }
+}
+
+sessionCookies = loadStoredSessionCookies()
+if (sessionCookies) installFetchPatch()
 
 function loadStoredSessionSecret(): string | null {
   try {
@@ -46,6 +99,7 @@ export function clearStoredSessionSecret() {
   } catch {
     /* ignore */
   }
+  clearSessionCookies()
 }
 
 export function applySessionSecret(secret: string) {
@@ -142,18 +196,11 @@ export async function createSessionAndStore(userId: string, secret: string): Pro
           const cookies = JSON.parse(fallbackCookies)
           for (const [name, value] of Object.entries(cookies)) {
             if (name.startsWith("a_session_")) {
-              try {
-                const decoded = JSON.parse(atob(String(value)))
-                if (decoded.secret) {
-                  sessionSecret = decoded.secret
-                  console.log("[appwrite] decoded session secret from x-fallback-cookies")
-                  break
-                }
-              } catch {
-                sessionSecret = String(value)
-                console.log("[appwrite] using raw x-fallback-cookie value as session secret")
-                break
-              }
+              sessionSecret = String(value)
+              storeSessionCookies(fallbackCookies)
+              installFetchPatch()
+              console.log("[appwrite] session established via x-fallback-cookies")
+              break
             }
           }
         } catch (e) {
