@@ -308,5 +308,18 @@
         "execute": [
             "users"
         ]
+    },
+    {
+        "$id": "send-discord-dms",
+        "name": "Send Discord DMs",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/send-discord-dms",
+        "timeout": 120,
+        "execute": [
+            "users"
+        ]
     }
 ]

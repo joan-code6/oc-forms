@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,9 @@ import {
 } from "@/components/ui/select"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ArrowLeft, AlertTriangle, Search, Eye, ArrowUpDown, ArrowUp, ArrowDown, Clock, MapPin } from "lucide-react"
+import { ArrowLeft, AlertTriangle, Search, Eye, ArrowUpDown, ArrowUp, ArrowDown, Clock, MapPin, Loader2 } from "lucide-react"
+
+const PAGE_SIZE = 50
 
 const UNSCORED_APPLICATIONS_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_UNSCORED_APPS_ID || "get-unscored-applications"
@@ -36,6 +38,7 @@ interface UnscoredApplication {
 interface UnscoredAppsResult {
   applications: UnscoredApplication[]
   total: number
+  hasMore: boolean
 }
 
 export function UnscoredApplicationsPage() {
@@ -43,7 +46,10 @@ export function UnscoredApplicationsPage() {
   const navigate = useNavigate()
 
   const [applications, setApplications] = useState<UnscoredApplication[]>([])
+  const [total, setTotal] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -51,13 +57,25 @@ export function UnscoredApplicationsPage() {
   const [sortBy, setSortBy] = useState<"date" | "ign">("date")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
 
+  const fetchPage = useCallback(async (offset: number, append = false) => {
+    const result = await callFunction<UnscoredAppsResult>(UNSCORED_APPLICATIONS_FUNCTION_ID, {
+      offset,
+      limit: PAGE_SIZE,
+    })
+    if (append) {
+      setApplications((prev) => [...prev, ...result.applications])
+    } else {
+      setApplications(result.applications)
+    }
+    setTotal(result.total)
+    setHasMore(result.hasMore)
+  }, [])
+
   useEffect(() => {
     if (!allowed) return
     let cancelled = false
-    callFunction<UnscoredAppsResult>(UNSCORED_APPLICATIONS_FUNCTION_ID)
-      .then((result) => {
-        if (!cancelled) setApplications(result.applications)
-      })
+    setLoading(true)
+    fetchPage(0, false)
       .catch((e) => {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : "Failed to load applications.")
       })
@@ -65,7 +83,18 @@ export function UnscoredApplicationsPage() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [allowed])
+  }, [allowed, fetchPage])
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    try {
+      await fetchPage(applications.length, true)
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Failed to load more.")
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const timezones = useMemo(() => {
     const zones = new Set(applications.map((app) => app.timezone).filter(Boolean))
@@ -274,6 +303,14 @@ export function UnscoredApplicationsPage() {
               </CardContent>
             </Card>
           ))}
+          {hasMore && applications.length >= PAGE_SIZE && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {loadingMore ? "Loading..." : `Load more (${applications.length} of ${total} loaded)`}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
