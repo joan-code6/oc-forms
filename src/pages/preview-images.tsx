@@ -17,34 +17,21 @@ const IMAGES = Object.entries(SCREENSHOT_FILES).map(([path, src]) => {
   return { src: src as string, name }
 })
 
-const TRANSITION_DURATION = 500
 const AUTO_PLAY_INTERVAL = 5000
+const PRELOAD_AHEAD = 3
 
 export function PreviewImagesPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isTransitioning, setIsTransitioning] = useState(false)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
   const navigate = useNavigate()
 
-  const goTo = useCallback(
-    (index: number) => {
-      if (isTransitioning || index === currentIndex) return
-      setIsTransitioning(true)
-      setTimeout(() => {
-        setCurrentIndex(index)
-        setIsTransitioning(false)
-      }, TRANSITION_DURATION)
-    },
-    [isTransitioning, currentIndex]
-  )
-
   const goNext = useCallback(() => {
-    goTo((currentIndex + 1) % IMAGES.length)
-  }, [currentIndex, goTo])
+    setCurrentIndex((prev) => (prev + 1) % IMAGES.length)
+  }, [])
 
   const goPrev = useCallback(() => {
-    goTo((currentIndex - 1 + IMAGES.length) % IMAGES.length)
-  }, [currentIndex, goTo])
+    setCurrentIndex((prev) => (prev - 1 + IMAGES.length) % IMAGES.length)
+  }, [])
 
   useEffect(() => {
     if (!isAutoPlaying) return
@@ -61,21 +48,27 @@ export function PreviewImagesPage() {
     return () => window.removeEventListener("keydown", handleKey)
   }, [goNext, goPrev])
 
+  useEffect(() => {
+    for (let offset = 1; offset <= PRELOAD_AHEAD; offset++) {
+      const idx = (currentIndex + offset) % IMAGES.length
+      const img = new Image()
+      img.src = IMAGES[idx].src
+      const prevIdx = (currentIndex - offset + IMAGES.length) % IMAGES.length
+      const prevImg = new Image()
+      prevImg.src = IMAGES[prevIdx].src
+    }
+  }, [currentIndex])
+
   return (
     <div className="fixed inset-0 flex flex-col bg-black">
-      {/* Main image */}
       <div className="relative flex-1 overflow-hidden">
-        {IMAGES.map((img, i) => (
-          <img
-            key={img.src}
-            src={img.src}
-            alt={img.name}
-            className="absolute inset-0 h-full w-full object-contain transition-opacity duration-500"
-            style={{ opacity: i === currentIndex && !isTransitioning ? 1 : 0 }}
-          />
-        ))}
+        <img
+          key={currentIndex}
+          src={IMAGES[currentIndex].src}
+          alt={IMAGES[currentIndex].name}
+          className="animate-in absolute inset-0 h-full w-full object-contain"
+        />
 
-        {/* Nav arrows */}
         <Button
           variant="ghost"
           size="icon"
@@ -92,8 +85,6 @@ export function PreviewImagesPage() {
         >
           <ChevronRight className="h-6 w-6" />
         </Button>
-
-        {/* Back button */}
         <Button
           variant="ghost"
           size="sm"
@@ -108,7 +99,6 @@ export function PreviewImagesPage() {
         </div>
       </div>
 
-      {/* Thumbnail strip */}
       <div className="flex items-center gap-2 overflow-x-auto border-t border-white/10 bg-black/80 px-4 py-3">
         <Button
           variant="ghost"
@@ -123,7 +113,7 @@ export function PreviewImagesPage() {
             key={img.src}
             onClick={() => {
               setIsAutoPlaying(false)
-              goTo(i)
+              setCurrentIndex(i)
             }}
             className={`shrink-0 overflow-hidden rounded-md border-2 transition-all duration-200 ${
               i === currentIndex
@@ -131,7 +121,12 @@ export function PreviewImagesPage() {
                 : "border-transparent opacity-40 hover:opacity-70"
             }`}
           >
-            <img src={img.src} alt={img.name} className="h-14 w-20 object-cover" />
+            <img
+              src={img.src}
+              alt={img.name}
+              className="h-14 w-20 object-cover"
+              loading={Math.abs(i - currentIndex) <= 2 ? "eager" : "lazy"}
+            />
           </button>
         ))}
       </div>

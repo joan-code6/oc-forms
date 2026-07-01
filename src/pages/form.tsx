@@ -416,9 +416,9 @@ function FormContent() {
       )}
 
       {/* Navigation buttons */}
-      {currentPage < TOTAL_PAGES ? (
-        <div className="flex items-center gap-4">
-          {currentPage > 1 ? (
+      <div className="flex items-center">
+        <div className="flex-1 flex justify-start">
+          {currentPage > 1 && (
             <Button
               type="button"
               variant="outline"
@@ -428,9 +428,9 @@ function FormContent() {
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-          ) : (
-            <div />
           )}
+        </div>
+        <div className="flex-1 flex justify-center">
           <div className="flex items-center gap-1.5">
             {Array.from({ length: TOTAL_PAGES }, (_, i) => (
               <div
@@ -445,48 +445,27 @@ function FormContent() {
               />
             ))}
           </div>
-          <Button
-            type="button"
-            onClick={handleNext}
-            className="gap-2"
-          >
-            Next page
-            <ArrowRight className="h-4 w-4" />
-          </Button>
         </div>
-      ) : (
-        <div className="flex items-center gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleBack}
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          <div className="flex items-center gap-1.5">
-            {Array.from({ length: TOTAL_PAGES }, (_, i) => (
-              <div
-                key={i}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i + 1 === currentPage
-                    ? "w-6 bg-white"
-                    : i + 1 < currentPage
-                      ? "w-1.5 bg-white/50"
-                      : "w-1.5 bg-white/20"
-                }`}
-              />
-            ))}
-          </div>
-          <SubmitSuccessCard
-            isSubmitting={state.isSubmitting}
-            submitted={state.submitted}
-            disabled={!isFormReady || !isFormComplete}
-            onSubmit={handleSubmit}
-          />
+        <div className="flex-1 flex justify-end">
+          {currentPage < TOTAL_PAGES ? (
+            <Button
+              type="button"
+              onClick={handleNext}
+              className="gap-2"
+            >
+              Next page
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <SubmitSuccessCard
+              isSubmitting={state.isSubmitting}
+              submitted={state.submitted}
+              disabled={!isFormReady || !isFormComplete}
+              onSubmit={handleSubmit}
+            />
+          )}
         </div>
-      )}
+      </div>
 
       {isFormReady && !isFormComplete && currentPage === TOTAL_PAGES && (
         <div className="animate-in flex items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-center text-sm text-amber-400/80">
