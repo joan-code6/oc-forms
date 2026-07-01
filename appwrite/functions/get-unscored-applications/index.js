@@ -58,39 +58,36 @@ async function verifyStaffRole(userId) {
   }
 }
 
-async function fetchDiscordJoinDate(discordId) {
-  if (!discordId) return null;
-  try {
-    const res = await fetch(
-      `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}`,
-      {
-        headers: {
-          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!res.ok) return null;
-    const member = await res.json();
-    return member.joined_at || null;
-  } catch {
-    return null;
-  }
-}
 
-async function getReviewCount(databases, applicationId) {
+async function getAllReviewCounts(databases) {
   try {
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      REVIEWS_COLLECTION_ID,
-      [
-        Query.equal("applicationId", applicationId),
-        Query.limit(100),
-      ]
-    );
-    return result.total;
+    const counts = {};
+    let offset = 0;
+    const limit = 5000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const result = await databases.listDocuments(
+        DATABASE_ID,
+        REVIEWS_COLLECTION_ID,
+        [
+          Query.limit(limit),
+          Query.offset(offset),
+        ]
+      );
+      for (const doc of result.documents) {
+        const appId = doc.applicationId;
+        if (appId) {
+          counts[appId] = (counts[appId] || 0) + 1;
+        }
+      }
+      hasMore = result.documents.length === limit;
+      offset += result.documents.length;
+    }
+
+    return counts;
   } catch {
-    return 0;
+    return {};
   }
 }
 
@@ -103,6 +100,7 @@ function formatApplication(doc) {
     timezone: doc.timezone || "",
     createdAt: doc.createdAt || "",
     status: doc.status,
+    joinedAt: doc.discordJoinDate || null,
   };
 }
 
@@ -145,14 +143,13 @@ module.exports = async function (context) {
       }
     }
 
-    const formattedApplications = await Promise.all(
-      allApplications.map(async (app) => {
-        const formatted = formatApplication(app);
-        const reviewerCount = await getReviewCount(databases, app.$id);
-        const joinedAt = await fetchDiscordJoinDate(app.discordId);
-        return { ...formatted, reviewerCount, joinedAt };
-      })
-    );
+    const reviewCounts = await getAllReviewCounts(databases);
+
+    const formattedApplications = allApplications.map((app) => {
+      const formatted = formatApplication(app);
+      formatted.reviewerCount = reviewCounts[app.$id] || 0;
+      return formatted;
+    });
 
     return res.json({
       applications: formattedApplications,

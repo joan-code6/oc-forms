@@ -6,6 +6,8 @@ const API_KEY     = process.env.APPWRITE_API_KEY;
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
 const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_COLLECTION_ID;
 const SETTINGS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
 
 const QUESTION_TEXT = {
   q1: "Do you have a working microphone?",
@@ -74,6 +76,7 @@ module.exports = async function (context) {
   let discordUsername = "";
   let discordEmail = "";
   let discordId = "";
+  let discordJoinDate = null;
 
   try {
     const client = getServerClient();
@@ -94,6 +97,21 @@ module.exports = async function (context) {
   } catch (e) {
     log("Could not fetch user from Appwrite:", e.message);
     return res.json({ success: false, error: "Invalid user." }, 401);
+  }
+
+  try {
+    if (discordId && DISCORD_BOT_TOKEN && DISCORD_GUILD_ID) {
+      const memberRes = await fetch(
+        `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}`,
+        { headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" } }
+      );
+      if (memberRes.ok) {
+        const member = await memberRes.json();
+        discordJoinDate = member.joined_at || null;
+      }
+    }
+  } catch {
+    // non-critical
   }
 
   try {
@@ -175,6 +193,7 @@ module.exports = async function (context) {
         discordUsername,
         discordEmail,
         discordId,
+        discordJoinDate,
         minecraftIGN: ign,
         timezone,
         yesNoAnswers: JSON.stringify(enrichedYesNo),

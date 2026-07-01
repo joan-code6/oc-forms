@@ -1,0 +1,9 @@
+{
+  "name": "backfill-discord-join-dates",
+  "version": "1.0.0",
+  "description": "One-time backfill: fetches Discord join dates for existing applications that lack the field.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}

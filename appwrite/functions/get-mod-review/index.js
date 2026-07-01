@@ -79,22 +79,7 @@ function formatQuestionText(val, fallbackId) {
   return fallbackId;
 }
 
-async function fetchDiscordJoinDate(discordId) {
-  if (!discordId || !DISCORD_BOT_TOKEN || !DISCORD_GUILD_ID) return null;
-  try {
-    const res = await fetch(
-      `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}`,
-      { headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" } }
-    );
-    if (!res.ok) return null;
-    const member = await res.json();
-    return member?.joined_at || null;
-  } catch {
-    return null;
-  }
-}
-
-function formatApplication(doc, joinedAt) {
+function formatApplication(doc) {
   let yesNoAnswers = {};
   let textAnswers = {};
   let dropdownAnswers = {};
@@ -125,7 +110,7 @@ function formatApplication(doc, joinedAt) {
     skinUrl,
     discordUsername: doc.discordUsername || "",
     discordId: doc.discordId || "",
-    joinedAt,
+    joinedAt: doc.discordJoinDate || null,
     timezone: doc.timezone || "",
     createdAt: doc.createdAt || "",
     status: doc.status || "",
@@ -194,8 +179,7 @@ module.exports = async function (context) {
           APPLICATIONS_COLLECTION_ID,
           reviewDoc.applicationId
         );
-        const joinedAt = await fetchDiscordJoinDate(appDoc.discordId);
-        application = formatApplication(appDoc, joinedAt);
+        application = formatApplication(appDoc);
       } catch (appErr) {
         log("Could not fetch application for review:", appErr.message);
       }

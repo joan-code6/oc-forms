@@ -232,6 +232,19 @@
         ]
     },
     {
+        "$id": "backfill-discord-join-dates",
+        "name": "Backfill Discord Join Dates",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/backfill-discord-join-dates",
+        "timeout": 120,
+        "execute": [
+            "users"
+        ]
+    },
+    {
         "$id": "export-accept-applications",
         "name": "Export Accept Applications",
         "runtime": "node-25",
