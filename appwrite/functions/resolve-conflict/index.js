@@ -93,6 +93,22 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
+    // Check if application exists and is not already reviewed
+    let application;
+    try {
+      application = await databases.getDocument(
+        DATABASE_ID,
+        APPLICATIONS_COLLECTION_ID,
+        applicationId
+      );
+    } catch {
+      return res.json({ error: "Application not found." }, 404);
+    }
+
+    if (application.status === "reviewed") {
+      return res.json({ error: "This application has already been resolved. Refresh the page to see the current state." }, 409);
+    }
+
     const ratingZone = chosenRating <= 25 ? "red" : chosenRating <= 50 ? "orange" : chosenRating <= 75 ? "yellow" : "green";
     const now = new Date().toISOString();
 
@@ -125,6 +141,7 @@ module.exports = async function (context) {
       ]
     );
 
+    const failedReviews = [];
     for (const review of allReviews.documents) {
       try {
         await databases.updateDocument(
@@ -135,6 +152,7 @@ module.exports = async function (context) {
         );
       } catch (updateErr) {
         log(`Failed to mark review ${review.$id} as overwritten:`, updateErr.message);
+        failedReviews.push(review.$id);
       }
     }
 
@@ -157,9 +175,13 @@ module.exports = async function (context) {
       appUpdateData
     );
 
+    const warning = failedReviews.length > 0
+      ? `Resolution applied but ${failedReviews.length} review(s) could not be marked as overwritten.`
+      : null;
+
     log(`Conflict resolved for ${applicationId}: admin ${userId} (${chosenRating}%)`);
 
-    return res.json({ success: true });
+    return res.json({ success: true, warning });
   } catch (e) {
     error("Failed to resolve conflict:", e.message);
     return res.json({ error: "Failed to resolve." }, 500);

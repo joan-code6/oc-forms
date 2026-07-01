@@ -408,9 +408,21 @@ module.exports = async function (context) {
       }
     }
 
+    // Read double review setting
+    let doubleReviewEnabled = false;
+    try {
+      const settingsDoc = await databases.getDocument(
+        DATABASE_ID,
+        SETTINGS_COLLECTION_ID,
+        "global"
+      );
+      doubleReviewEnabled = settingsDoc.doubleReviewEnabled || false;
+    } catch {
+      // Settings not found — default to single review
+    }
+
     // --- Claim next pending application ---
     for (let attempt = 0; attempt < MAX_CLAIM_RETRIES; attempt++) {
-      // First try pending apps, then pending_2nd if double review is enabled
       let doc = null;
       const pendingResult = await databases.listDocuments(
         DATABASE_ID,
@@ -423,7 +435,7 @@ module.exports = async function (context) {
       );
       doc = pendingResult.documents[0] || null;
 
-      if (!doc) {
+      if (!doc && doubleReviewEnabled) {
         const secondResult = await databases.listDocuments(
           DATABASE_ID,
           APPLICATIONS_COLLECTION_ID,

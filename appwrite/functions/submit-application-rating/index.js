@@ -7,6 +7,7 @@ const DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
 const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_ID;
 const CLAIMS_COLLECTION_ID       = process.env.APPWRITE_CLAIMS_COLLECTION_ID;
 const REVIEWS_COLLECTION_ID      = process.env.APPWRITE_MODERATOR_REVIEWS_COLLECTION_ID;
+const SETTINGS_COLLECTION_ID     = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
 const DISCORD_STAFF_ROLE_ID = process.env.DISCORD_STAFF_ROLE_ID;
@@ -24,22 +25,6 @@ function getRatingZone(value) {
   if (value <= 50) return "orange";
   if (value <= 75) return "yellow";
   return "green";
-}
-
-async function getReviewCount(databases, applicationId) {
-  try {
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      REVIEWS_COLLECTION_ID,
-      [
-        Query.equal("applicationId", applicationId),
-        Query.limit(100),
-      ]
-    );
-    return result.total;
-  } catch {
-    return 0;
-  }
 }
 
 async function verifyStaffRole(userId) {
@@ -165,10 +150,20 @@ module.exports = async function (context) {
       }
     }
 
-    const ratingZone = getRatingZone(rating);
+    // Read double review setting
+    let doubleReviewEnabled = false;
+    try {
+      const settingsDoc = await databases.getDocument(
+        DATABASE_ID,
+        SETTINGS_COLLECTION_ID,
+        "global"
+      );
+      doubleReviewEnabled = settingsDoc.doubleReviewEnabled || false;
+    } catch {
+      // Settings not found — default to single review
+    }
 
-    // Check existing review count BEFORE creating the new review
-    const existingReviewCount = await getReviewCount(databases, applicationId);
+    const ratingZone = getRatingZone(rating);
 
     const reviewData = {
       applicationId,
@@ -184,16 +179,37 @@ module.exports = async function (context) {
       reviewData.moderatorNote = moderatorNote.trim();
     }
 
+    // Create the review document first (atomic via unique())
+    const reviewId = "unique()";
     await databases.createDocument(
       DATABASE_ID,
       REVIEWS_COLLECTION_ID,
-      "unique()",
+      reviewId,
       reviewData
     );
 
-    // Determine new status: 1st review → pending_2nd, 2nd+ → reviewed
+    // COUNT reviews AFTER creating this one, so the count includes the new review.
+    // This avoids the race condition where two simultaneous first reviews both see count=0.
+    let reviewCount = 1;
+    try {
+      const countResult = await databases.listDocuments(
+        DATABASE_ID,
+        REVIEWS_COLLECTION_ID,
+        [
+          Query.equal("applicationId", applicationId),
+          Query.limit(100),
+        ]
+      );
+      reviewCount = countResult.total;
+    } catch {
+      // If we can't count, assume our own review exists (count ≥ 1)
+    }
+
+    // Determine new status:
+    // - If double review is enabled AND this is the first review → pending_2nd
+    // - Otherwise → reviewed
     let newStatus = "reviewed";
-    if (existingReviewCount === 0) {
+    if (doubleReviewEnabled && reviewCount < 2) {
       newStatus = "pending_2nd";
     }
 
@@ -209,12 +225,40 @@ module.exports = async function (context) {
       appUpdateData.moderatorNote = moderatorNote.trim();
     }
 
-    await databases.updateDocument(
-      DATABASE_ID,
-      APPLICATIONS_COLLECTION_ID,
-      applicationId,
-      appUpdateData
-    );
+    try {
+      await databases.updateDocument(
+        DATABASE_ID,
+        APPLICATIONS_COLLECTION_ID,
+        applicationId,
+        appUpdateData
+      );
+    } catch (updateErr) {
+      // Rollback: delete the review we just created since the app update failed
+      try {
+        // We used "unique()" so we need to find the actual review document
+        const createdReviews = await databases.listDocuments(
+          DATABASE_ID,
+          REVIEWS_COLLECTION_ID,
+          [
+            Query.equal("applicationId", applicationId),
+            Query.equal("moderatorUserId", userId),
+            Query.orderDesc("reviewedAt"),
+            Query.limit(1),
+          ]
+        );
+        if (createdReviews.documents.length > 0) {
+          await databases.deleteDocument(
+            DATABASE_ID,
+            REVIEWS_COLLECTION_ID,
+            createdReviews.documents[0].$id
+          );
+        }
+      } catch (rollbackErr) {
+        error("Rollback failed — review document may be orphaned:", rollbackErr.message);
+      }
+      error("Failed to update application after review:", updateErr.message);
+      return res.json({ success: false, error: "Failed to save rating." }, 500);
+    }
 
     // Clean up the claim document
     try {
@@ -224,10 +268,10 @@ module.exports = async function (context) {
         applicationId
       );
     } catch {
-      // Ignore cleanup failures
+      // Ignore cleanup failures — stale claim will be cleaned by scheduler
     }
 
-    log(`Application ${applicationId} rated ${rating}% (${ratingZone}) by ${staffCheck.discordUsername}`);
+    log(`Application ${applicationId} rated ${rating}% (${ratingZone}) by ${staffCheck.discordUsername}, new status: ${newStatus}`);
 
     return res.json({ success: true });
   } catch (e) {

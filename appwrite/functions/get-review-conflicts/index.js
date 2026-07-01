@@ -71,6 +71,15 @@ module.exports = async function (context) {
     const client = getServerClient();
     const databases = new Databases(client);
 
+    let body = {};
+    try {
+      body = JSON.parse(req.body || "{}");
+    } catch { /* ignore */ }
+
+    // Pagination: scan through all reviews in batches to find conflicts
+    const pageSize = typeof body.limit === "number" ? body.limit : 200;
+    const maxPages = typeof body.maxPages === "number" ? body.maxPages : 5;
+
     let threshold = 30;
     try {
       const settings = await databases.getDocument(
@@ -85,31 +94,50 @@ module.exports = async function (context) {
       // Use default threshold of 30
     }
 
-    const allReviews = await databases.listDocuments(
-      DATABASE_ID,
-      REVIEWS_COLLECTION_ID,
-      [
-        Query.orderDesc("reviewedAt"),
-        Query.limit(200),
-      ]
-    );
-
     const byApp = {};
-    for (const review of allReviews.documents) {
-      if (!byApp[review.applicationId]) {
-        byApp[review.applicationId] = [];
+    let totalReviewsScanned = 0;
+    let hasMore = false;
+
+    for (let page = 0; page < maxPages; page++) {
+      const query = [
+        Query.orderDesc("reviewedAt"),
+        Query.limit(pageSize),
+      ];
+      if (page > 0) {
+        query.push(Query.offset(page * pageSize));
       }
-      byApp[review.applicationId].push({
-        id: review.$id,
-        rating: review.rating,
-        ratingZone: review.ratingZone,
-        moderatorUserId: review.moderatorUserId,
-        moderatorDiscordUsername: review.moderatorDiscordUsername,
-        moderatorDiscordId: review.moderatorDiscordId,
-        moderatorNote: review.moderatorNote || null,
-        reviewedAt: review.reviewedAt,
-        overwrittenBy: review.overwrittenBy || null,
-      });
+
+      const allReviews = await databases.listDocuments(
+        DATABASE_ID,
+        REVIEWS_COLLECTION_ID,
+        query
+      );
+
+      totalReviewsScanned += allReviews.documents.length;
+
+      for (const review of allReviews.documents) {
+        if (!byApp[review.applicationId]) {
+          byApp[review.applicationId] = [];
+        }
+        byApp[review.applicationId].push({
+          id: review.$id,
+          rating: review.rating,
+          ratingZone: review.ratingZone,
+          moderatorUserId: review.moderatorUserId,
+          moderatorDiscordUsername: review.moderatorDiscordUsername,
+          moderatorDiscordId: review.moderatorDiscordId,
+          moderatorNote: review.moderatorNote || null,
+          reviewedAt: review.reviewedAt,
+          overwrittenBy: review.overwrittenBy || null,
+        });
+      }
+
+      if (allReviews.documents.length < pageSize) {
+        break;
+      }
+      if (page === maxPages - 1 && allReviews.documents.length === pageSize) {
+        hasMore = true;
+      }
     }
 
     const conflicts = [];
@@ -138,7 +166,13 @@ module.exports = async function (context) {
 
     conflicts.sort((a, b) => b.ratingSpread - a.ratingSpread);
 
-    return res.json({ conflicts, total: conflicts.length, conflictThreshold: threshold });
+    return res.json({
+      conflicts,
+      total: conflicts.length,
+      conflictThreshold: threshold,
+      totalReviewsScanned,
+      hasMore,
+    });
   } catch (e) {
     error("Failed to find conflicts:", e.message);
     return res.json({ error: "Failed to load conflicts." }, 500);

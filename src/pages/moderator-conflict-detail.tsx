@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ArrowLeft, AlertTriangle, Gavel, Save } from "lucide-react"
+import { ArrowLeft, AlertTriangle, Gavel, Save, Pencil } from "lucide-react"
 
 const CONFLICT_DETAIL_FUNCTION_ID =
-  import.meta.env.VITE_APPWRITE_FUNCTION_CONFLICT_DETAIL_ID || ""
+  import.meta.env.VITE_APPWRITE_FUNCTION_CONFLICT_DETAIL_ID || "get-conflict-detail"
 const RESOLVE_CONFLICT_FUNCTION_ID =
   import.meta.env.VITE_APPWRITE_FUNCTION_RESOLVE_CONFLICT_ID || "resolve-conflict"
 
@@ -37,14 +37,26 @@ interface ApplicationData {
   answers: { question: string; answer: string }[]
 }
 
+interface OverwriteData {
+  id: string
+  applicationId: string
+  overwriterUserId: string
+  rating: number
+  ratingZone: string
+  note: string | null
+  overwrittenAt: string
+}
+
 interface ConflictDetailResult {
   application: ApplicationData | null
   reviews: ReviewData[]
+  overwrite: OverwriteData | null
 }
 
 interface ResolveResult {
   success: boolean
   error?: string
+  warning?: string | null
 }
 
 function getColor(zone: string | number): string {
@@ -71,6 +83,7 @@ export function ModeratorConflictDetailPage() {
 
   const [application, setApplication] = useState<ApplicationData | null>(null)
   const [reviews, setReviews] = useState<ReviewData[]>([])
+  const [overwrite, setOverwrite] = useState<OverwriteData | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -87,6 +100,7 @@ export function ModeratorConflictDetailPage() {
         if (cancelled) return
         setApplication(result.application)
         setReviews(result.reviews)
+        setOverwrite(result.overwrite ?? null)
       })
       .catch((e) => {
         if (cancelled) return
@@ -98,7 +112,7 @@ export function ModeratorConflictDetailPage() {
     return () => { cancelled = true }
   }, [allowed, applicationId])
 
-  const handleResolve = async (chosenReviewId: string) => {
+  const handleResolve = async (chosenReviewId: string, chosenRating: number, chosenNote: string | null) => {
     if (!applicationId) return
     setSaving(true)
     setSaveError(null)
@@ -108,8 +122,8 @@ export function ModeratorConflictDetailPage() {
         {
           applicationId,
           chosenReviewId,
-          chosenRating: customRating,
-          moderatorNote: customNote || undefined,
+          chosenRating,
+          moderatorNote: chosenNote || undefined,
         }
       )
       if (result.success) {
@@ -173,6 +187,8 @@ export function ModeratorConflictDetailPage() {
   const spread = reviews.length >= 2
     ? Math.max(...reviews.map((r) => r.rating)) - Math.min(...reviews.map((r) => r.rating))
     : 0
+
+  const alreadyResolved = application.status === "reviewed" || overwrite !== null
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-12">
@@ -282,87 +298,124 @@ export function ModeratorConflictDetailPage() {
                   <p className="text-sm text-white/60 whitespace-pre-wrap">{review.moderatorNote}</p>
                 )}
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full mt-2"
-                  onClick={() => {
-                    setCustomRating(review.rating)
-                    setCustomNote(review.moderatorNote || "")
-                  }}
-                >
-                  Use this rating
-                </Button>
+                {!alreadyResolved && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full mt-2"
+                    onClick={() => {
+                      setCustomRating(review.rating)
+                      setCustomNote(review.moderatorNote || "")
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                    Load this rating into editor
+                  </Button>
+                )}
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-white">Your Decision</h2>
+      {alreadyResolved ? (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-green-400">Conflict Already Resolved</h2>
+            {overwrite && (
+              <div className="space-y-2 text-sm text-white/70">
+                <p>Resolution rating: <span className="font-bold" style={{ color: getColor(overwrite.rating) }}>{overwrite.rating}%</span> ({overwrite.ratingZone})</p>
+                {overwrite.note && <p>Note: {overwrite.note}</p>}
+                <p className="text-white/40">Resolved at {new Date(overwrite.overwrittenAt).toLocaleString()}</p>
+              </div>
+            )}
+            <Button variant="outline" onClick={() => navigate("/moderator/conflicts")}>
+              Back to Conflicts
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-white">Your Decision</h2>
 
-          <div className="space-y-2">
-            <label className="text-sm text-white/60">Rating</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={customRating}
-                onChange={(e) => setCustomRating(Number(e.target.value))}
-                className="flex-1"
-                style={{
-                  background: getSliderBackground(),
-                  height: "8px",
-                  borderRadius: "4px",
-                  appearance: "none",
-                  cursor: "pointer",
-                }}
+            <div className="space-y-2">
+              <label className="text-sm text-white/60">Custom Rating (for manual override)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={customRating}
+                  onChange={(e) => setCustomRating(Number(e.target.value))}
+                  className="flex-1"
+                  style={{
+                    background: getSliderBackground(),
+                    height: "8px",
+                    borderRadius: "4px",
+                    appearance: "none",
+                    cursor: "pointer",
+                  }}
+                />
+                <span
+                  className="text-xl font-bold min-w-[3ch]"
+                  style={{ color: getColor(customRating) }}
+                >
+                  {customRating}%
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm text-white/60">Custom Note (optional)</label>
+              <textarea
+                value={customNote}
+                onChange={(e) => setCustomNote(e.target.value)}
+                rows={3}
+                placeholder="Optional note about this override..."
+                className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
               />
-              <span
-                className="text-xl font-bold min-w-[3ch]"
-                style={{ color: getColor(customRating) }}
-              >
-                {customRating}%
-              </span>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-sm text-white/60">Description</label>
-            <textarea
-              value={customNote}
-              onChange={(e) => setCustomNote(e.target.value)}
-              rows={3}
-              placeholder="Optional note about this override..."
-              className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
-            />
-          </div>
+            {saveError && (
+              <div className="flex items-center gap-2 text-sm text-red-400">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {saveError}
+              </div>
+            )}
 
-          {saveError && (
-            <div className="flex items-center gap-2 text-sm text-red-400">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              {saveError}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-white/40 uppercase tracking-wider">Resolve using a reviewer's rating</p>
+              <div className="flex flex-wrap gap-2">
+                {reviews.map((review) => (
+                  <Button
+                    key={review.id}
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => handleResolve(review.id, review.rating, review.moderatorNote)}
+                  >
+                    <Save className="h-3.5 w-3.5 mr-1" />
+                    {saving ? "Resolving..." : `Use ${review.moderatorDiscordUsername}'s rating (${review.rating}%)`}
+                  </Button>
+                ))}
+              </div>
             </div>
-          )}
 
-          <div className="flex gap-2 justify-end">
-            {reviews.map((review) => (
+            <div>
+              <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">Or use your custom rating</p>
               <Button
-                key={review.id}
                 size="sm"
+                variant="secondary"
                 disabled={saving}
-                onClick={() => handleResolve(review.id)}
+                onClick={() => handleResolve("custom", customRating, customNote || null)}
               >
                 <Save className="h-3.5 w-3.5 mr-1" />
-                {saving ? "Resolving..." : `Override (${review.moderatorDiscordUsername})`}
+                {saving ? "Resolving..." : `Override with custom rating (${customRating}%)`}
               </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
