@@ -77,8 +77,8 @@ module.exports = async function (context) {
     } catch { /* ignore */ }
 
     // Pagination: scan through all reviews in batches to find conflicts
-    const pageSize = typeof body.limit === "number" ? body.limit : 200;
-    const maxPages = typeof body.maxPages === "number" ? body.maxPages : 5;
+    const pageSize = typeof body.limit === "number" ? body.limit : 500;
+    const maxPages = typeof body.maxPages === "number" ? body.maxPages : 20;
 
     let threshold = 30;
     try {

@@ -1,0 +1,8 @@
+{
+  "name": "send-discord-dms",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^14.1.0"
+  }
+}

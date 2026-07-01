@@ -49,6 +49,7 @@ interface AcceptedUsersResult {
   success: boolean
   users: AcceptedUser[]
   total: number
+  hasMore: boolean
 }
 
 interface SearchResult {
@@ -85,7 +86,10 @@ export function ModeratorExportPage() {
   const [exportError, setExportError] = useState<string | null>(null)
 
   const [acceptedUsers, setAcceptedUsers] = useState<AcceptedUser[]>([])
+  const [acceptedTotal, setAcceptedTotal] = useState(0)
+  const [acceptedHasMore, setAcceptedHasMore] = useState(false)
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [loadingMoreUsers, setLoadingMoreUsers] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [removing, setRemoving] = useState<string | null>(null)
@@ -102,18 +106,45 @@ export function ModeratorExportPage() {
 
   const [downloading, setDownloading] = useState(false)
 
-  const fetchAcceptedUsers = useCallback(async () => {
+  const ACCEPTED_PAGE_SIZE = 50;
+
+  const fetchAcceptedUsers = useCallback(async (offset = 0, append = false) => {
+    const result = await callFunction<AcceptedUsersResult>(GET_ACCEPTED_FUNCTION_ID, {
+      offset,
+      limit: ACCEPTED_PAGE_SIZE,
+    })
+    if (append) {
+      setAcceptedUsers((prev) => [...prev, ...result.users])
+    } else {
+      setAcceptedUsers(result.users)
+    }
+    setAcceptedTotal(result.total)
+    setAcceptedHasMore(result.hasMore)
+    return result
+  }, [])
+
+  const loadAcceptedUsers = async () => {
     setLoadingUsers(true)
     setLoadError(null)
     try {
-      const result = await callFunction<AcceptedUsersResult>(GET_ACCEPTED_FUNCTION_ID)
-      setAcceptedUsers(result.users)
+      await fetchAcceptedUsers(0, false)
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Failed to load users.")
     } finally {
       setLoadingUsers(false)
     }
-  }, [])
+  }
+
+  const loadMoreAccepted = async () => {
+    setLoadingMoreUsers(true)
+    try {
+      await fetchAcceptedUsers(acceptedUsers.length, true)
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Failed to load more users.")
+    } finally {
+      setLoadingMoreUsers(false)
+    }
+  }
 
   const handleExport = async () => {
     const max = parseInt(maxPlayers, 10)
@@ -143,7 +174,7 @@ export function ModeratorExportPage() {
       } else {
         toast.info("No new users to accept.")
       }
-      fetchAcceptedUsers()
+      fetchAcceptedUsers(0, false)
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Export failed."
       setExportError(msg)
@@ -206,7 +237,7 @@ export function ModeratorExportPage() {
       await callFunction(MANAGE_LABEL_FUNCTION_ID, { action: "add", targetUserId: userId })
       toast.success("Label added.")
       setSearchResults((prev) => prev?.filter((r) => r.userId !== userId) || null)
-      fetchAcceptedUsers()
+      fetchAcceptedUsers(0, false)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to add label.")
     } finally {
@@ -357,7 +388,7 @@ export function ModeratorExportPage() {
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-white">Accepted Users</p>
-            <Button variant="ghost" size="sm" onClick={fetchAcceptedUsers} disabled={loadingUsers}>
+            <Button variant="ghost" size="sm" onClick={loadAcceptedUsers} disabled={loadingUsers}>
               Refresh
             </Button>
           </div>
@@ -452,20 +483,30 @@ export function ModeratorExportPage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <p className="text-xs text-white/30">{acceptedUsers.length} total</p>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleRemoveAll}
-                  disabled={removingAll}
-                >
-                  {removingAll ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5" />
+                <p className="text-xs text-white/30">
+                  {acceptedUsers.length}{acceptedTotal > acceptedUsers.length ? ` of ${acceptedTotal}` : ""} total
+                </p>
+                <div className="flex items-center gap-2">
+                  {acceptedHasMore && (
+                    <Button variant="outline" size="sm" onClick={loadMoreAccepted} disabled={loadingMoreUsers}>
+                      {loadingMoreUsers ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                      Load more
+                    </Button>
                   )}
-                  Remove All
-                </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleRemoveAll}
+                    disabled={removingAll}
+                  >
+                    {removingAll ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                    Remove All
+                  </Button>
+                </div>
               </div>
             </>
           )}

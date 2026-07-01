@@ -71,13 +71,24 @@ module.exports = async function (context) {
   }
 
   try {
+    let body = {};
+    try { body = JSON.parse(req.body || "{}"); } catch { /* ignore */ }
+
+    const offset = typeof body.offset === "number" ? body.offset : 0;
+    const limit = Math.min(typeof body.limit === "number" ? body.limit : 50, 200);
+
     const client = getServerClient();
     const databases = new Databases(client);
+
+    const queries = [Query.orderDesc("assignedAt"), Query.limit(limit)];
+    if (offset > 0) {
+      queries.push(Query.offset(offset));
+    }
 
     const result = await databases.listDocuments(
       DATABASE_ID,
       ACCEPTED_EVENT_COLLECTION_ID,
-      [Query.limit(10000)]
+      queries
     );
 
     const users = result.documents.map((doc) => ({
@@ -91,7 +102,12 @@ module.exports = async function (context) {
       assignedBy: doc.assignedBy || "",
     }));
 
-    return res.json({ success: true, users, total: users.length });
+    return res.json({
+      success: true,
+      users,
+      total: result.total,
+      hasMore: offset + limit < result.total,
+    });
   } catch (e) {
     error("Failed to fetch accepted users:", e.message);
     return res.json({ success: false, error: "Failed to load accepted users." }, 500);

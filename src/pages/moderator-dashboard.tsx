@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
-import { ClipboardCheck, LogOut, AlertTriangle, BookOpen, Settings, ShieldAlert, Link2, Clock, Download } from "lucide-react"
+import { ClipboardCheck, LogOut, AlertTriangle, BookOpen, Settings, ShieldAlert, Link2, Clock, Download, MessageCircle } from "lucide-react"
 import { useAppwriteAuth } from "@/hooks/use-appwrite-auth"
 
 const STATS_FUNCTION_ID =
@@ -223,6 +223,14 @@ export function ModeratorDashboardPage() {
             >
               <Download className="h-4 w-4" />
               Export & Event
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => navigate("/moderator/dm")}
+            >
+              <MessageCircle className="h-4 w-4" />
+              Send Discord DMs
             </Button>
             <Button
               variant="outline"

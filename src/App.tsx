@@ -18,6 +18,7 @@ import { InviteDashboardPage } from "@/pages/invite-dashboard"
 import { InviteRedeemPage } from "@/pages/invite-redeem"
 import { ModeratorExportPage } from "@/pages/moderator-export"
 import { DebugPage } from "@/pages/debug"
+import { ModeratorDmPage } from "@/pages/moderator-dm"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +45,7 @@ export default function App() {
                 <Route path="/moderator/conflicts/:applicationId" element={<ModeratorConflictDetailPage />} />
                 <Route path="/moderator/unscored" element={<UnscoredApplicationsPage />} />
                 <Route path="/moderator/export" element={<ModeratorExportPage />} />
+                <Route path="/moderator/dm" element={<ModeratorDmPage />} />
                 <Route path="/no-access" element={<NoAccessPage />} />
                 <Route path="/preview-images" element={<PreviewImagesPage />} />
                 <Route path="/invites" element={<InviteDashboardPage />} />

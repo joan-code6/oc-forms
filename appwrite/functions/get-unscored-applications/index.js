@@ -59,30 +59,23 @@ async function verifyStaffRole(userId) {
 }
 
 
-async function getAllReviewCounts(databases) {
+async function getReviewCountsForApps(databases, appIds) {
+  if (!appIds || appIds.length === 0) return {};
   try {
     const counts = {};
     let offset = 0;
-    const limit = 5000;
-    let hasMore = true;
+    const batchLimit = Math.min(appIds.length * 50, 1000);
 
-    while (hasMore) {
+    for (const appId of appIds) {
       const result = await databases.listDocuments(
         DATABASE_ID,
         REVIEWS_COLLECTION_ID,
         [
-          Query.limit(limit),
-          Query.offset(offset),
+          Query.equal("applicationId", appId),
+          Query.limit(100),
         ]
       );
-      for (const doc of result.documents) {
-        const appId = doc.applicationId;
-        if (appId) {
-          counts[appId] = (counts[appId] || 0) + 1;
-        }
-      }
-      hasMore = result.documents.length === limit;
-      offset += result.documents.length;
+      counts[appId] = result.total;
     }
 
     return counts;
@@ -104,6 +97,25 @@ function formatApplication(doc) {
   };
 }
 
+async function countTotalUnscored(databases) {
+  const unscoredStatuses = ["pending", "pending_2nd", "in_review"];
+  let total = 0;
+  for (const status of unscoredStatuses) {
+    try {
+      const result = await databases.listDocuments(
+        DATABASE_ID,
+        APPLICATIONS_COLLECTION_ID,
+        [
+          Query.equal("status", status),
+          Query.limit(0),
+        ]
+      );
+      total += result.total;
+    } catch { /* skip */ }
+  }
+  return total;
+}
+
 module.exports = async function (context) {
   const { req, res, log, error } = context;
 
@@ -120,6 +132,12 @@ module.exports = async function (context) {
   }
 
   try {
+    let body = {};
+    try { body = JSON.parse(req.body || "{}"); } catch { /* ignore */ }
+
+    const offset = typeof body.offset === "number" ? body.offset : 0;
+    const limit = Math.min(typeof body.limit === "number" ? body.limit : 50, 100);
+
     const client = getServerClient();
     const databases = new Databases(client);
 
@@ -143,9 +161,11 @@ module.exports = async function (context) {
       }
     }
 
-    const reviewCounts = await getAllReviewCounts(databases);
+    const pagedApplications = allApplications.slice(offset, offset + limit);
+    const appIds = pagedApplications.map((app) => app.$id);
+    const reviewCounts = await getReviewCountsForApps(databases, appIds);
 
-    const formattedApplications = allApplications.map((app) => {
+    const formattedApplications = pagedApplications.map((app) => {
       const formatted = formatApplication(app);
       formatted.reviewerCount = reviewCounts[app.$id] || 0;
       return formatted;
@@ -153,7 +173,8 @@ module.exports = async function (context) {
 
     return res.json({
       applications: formattedApplications,
-      total: formattedApplications.length,
+      total: allApplications.length,
+      hasMore: offset + limit < allApplications.length,
     });
   } catch (e) {
     error("Failed to fetch unscored applications:", e.message);
