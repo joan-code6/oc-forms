@@ -32,27 +32,50 @@ export function useMinecraftValidation(username: string) {
   return useQuery({
     queryKey: ["minecraft-validate", debouncedUsername.toLowerCase()],
     queryFn: async (): Promise<MinecraftValidationResult> => {
-      const res = await fetch(
-        `https://playerdb.co/api/player/minecraft/${encodeURIComponent(debouncedUsername)}`,
-        {
-          headers: { Accept: "application/json" },
+      const encodedName = encodeURIComponent(debouncedUsername)
+
+      try {
+        const res = await fetch(
+          `https://playerdb.co/api/player/minecraft/${encodedName}`,
+          { headers: { Accept: "application/json" } }
+        )
+
+        const data = await res.json().catch(() => ({}))
+ 
+        if (res.ok && data.success !== false && data.data?.player) {
+          const player = data.data.player
+          return {
+            success: true,
+            username: player.username,
+            uuid: player.id,
+            skinUrl: player.avatar || player.thumbnail_url || null,
+          }
         }
-      )
-
-      const data = await res.json().catch(() => ({}))
-
-      if (!res.ok || data.success === false || !data.data?.player) {
-        return { success: false, error: "Minecraft account not found." }
+      } catch {
+        // PlayerDB unreachable - try Mojang fallback
       }
 
-      const player = data.data.player
+      try {
+        const mojangRes = await fetch(
+          `https://api.mojang.com/users/profiles/minecraft/${encodedName}`
+        )
 
-      return {
-        success: true,
-        username: player.username,
-        uuid: player.id,
-        skinUrl: player.avatar || player.thumbnail_url || null,
+        if (mojangRes.ok) {
+          const profile = await mojangRes.json().catch(() => null)
+          if (profile?.id) {
+            return {
+              success: true,
+              username: profile.name,
+              uuid: profile.id,
+              skinUrl: null,
+            }
+          }
+        }
+      } catch {
+        // Mojang also unreachable
       }
+
+      return { success: false, error: "Minecraft account not found." }
     },
     enabled,
     staleTime: 5 * 60 * 1000,
