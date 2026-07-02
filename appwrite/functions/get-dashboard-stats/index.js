@@ -231,37 +231,8 @@ function computeReviewsOverTime(reviews) {
   return sorted;
 }
 
-function computeUserAppDistribution(applications) {
-  const byUser = {};
-
-  for (const app of applications) {
-    const uid = app.userID || "unknown";
-    byUser[uid] = (byUser[uid] || 0) + 1;
-  }
-
-  const counts = Object.values(byUser);
-  const distribution = {
-    "1": 0,
-    "2": 0,
-    "3": 0,
-    "4": 0,
-    "5+": 0,
-  };
-
-  for (const c of counts) {
-    if (c === 1) distribution["1"]++;
-    else if (c === 2) distribution["2"]++;
-    else if (c === 3) distribution["3"]++;
-    else if (c === 4) distribution["4"]++;
-    else distribution["5+"]++;
-  }
-
-  return Object.entries(distribution)
-    .filter(([, v]) => v > 0)
-    .map(([label, count]) => ({ label, count }));
-}
-
-module.exports = async function (context) {
+    return res.json({
+      overview: {
   const { req, res, log, error } = context;
 
   const userId = req.headers?.["x-appwrite-user-id"];
@@ -362,7 +333,6 @@ module.exports = async function (context) {
       timezoneDistribution: computeTimezoneDistribution(applications),
       ratingZoneDistribution: computeRatingZoneDistribution(reviews),
       reviewsOverTime: computeReviewsOverTime(reviews),
-      userAppDistribution: computeUserAppDistribution(applications),
     });
   } catch (e) {
     error("Failed to fetch dashboard stats:", e.message);

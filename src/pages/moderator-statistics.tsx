@@ -94,10 +94,6 @@ interface ZoneEntry {
   count: number
 }
 
-interface UserAppBucket {
-  label: string
-  count: number
-}
 
 interface DashboardStats {
   overview: OverviewStats
@@ -108,7 +104,6 @@ interface DashboardStats {
   timezoneDistribution: TimezoneEntry[]
   ratingZoneDistribution: ZoneEntry[]
   reviewsOverTime: TimeSeriesEntry[]
-  userAppDistribution: UserAppBucket[]
 }
 
 const CHART_COLORS = ["#b57bee", "#4ade80", "#f97316", "#eab308", "#ef4444"]
@@ -284,7 +279,7 @@ export function ModeratorStatisticsPage() {
             ))}
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {Array.from({ length: 7 }).map((_, i) => (
+            {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-80 rounded-lg" />
             ))}
           </div>
@@ -618,44 +613,107 @@ export function ModeratorStatisticsPage() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Applications per User" className="lg:col-span-2">
+            <ChartCard title="Application Funnel">
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={stats.userAppDistribution}>
+                <BarChart
+                  layout="vertical"
+                  data={[
+                    {
+                      stage: "Auth Users",
+                      count: stats.overview.totalUsers,
+                      fill: "#b57bee",
+                    },
+                    {
+                      stage: "Applied",
+                      count: stats.overview.uniqueApplicants,
+                      fill: "#3b82f6",
+                    },
+                    {
+                      stage: "Reviewed",
+                      count: stats.overview.reviewedApplications,
+                      fill: "#22c55e",
+                    },
+                    {
+                      stage: "Accepted",
+                      count: Math.round(
+                        (stats.overview.acceptanceRate / 100) *
+                          stats.overview.reviewedApplications,
+                      ),
+                      fill: "#4ade80",
+                    },
+                  ]}
+                  margin={{ left: 20, right: 20 }}
+                >
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="rgba(255,255,255,0.05)"
+                    horizontal={false}
                   />
                   <XAxis
-                    dataKey="label"
-                    stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.6)" }}
-                    label={{
-                      value: "Applications",
-                      position: "insideBottom",
-                      offset: -5,
-                      style: { fill: "rgba(255,255,255,0.3)", fontSize: 11 },
-                    }}
-                  />
-                  <YAxis
+                    type="number"
                     stroke="rgba(255,255,255,0.2)"
                     tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                     allowDecimals={false}
-                    label={{
-                      value: "Users",
-                      angle: -90,
-                      position: "insideLeft",
-                      style: { fill: "rgba(255,255,255,0.3)", fontSize: 11 },
-                    }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="stage"
+                    stroke="rgba(255,255,255,0.2)"
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.6)" }}
+                    width={80}
                   />
                   <Tooltip content={<ChartTooltip />} />
                   <Bar
                     dataKey="count"
-                    name="Users"
-                    radius={[4, 4, 0, 0]}
-                    fill="#3b82f6"
-                    maxBarSize={48}
-                  />
+                    name="Count"
+                    radius={[0, 4, 4, 0]}
+                    maxBarSize={32}
+                  >
+                    {[0, 1, 2, 3].map((i) => (
+                      <Cell
+                        key={i}
+                        fill={["#b57bee", "#3b82f6", "#22c55e", "#4ade80"][i]}
+                        stroke="transparent"
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="User Engagement">
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      {
+                        name: "Applied",
+                        value: stats.overview.uniqueApplicants,
+                      },
+                      {
+                        name: "Not Applied",
+                        value:
+                          stats.overview.totalUsers -
+                          stats.overview.uniqueApplicants,
+                      },
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={95}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    <Cell fill="#b57bee" stroke="transparent" />
+                    <Cell fill="rgba(255,255,255,0.08)" stroke="transparent" />
+                  </Pie>
+                  <Tooltip content={<ChartTooltip />} />
+                  <Legend
+                    formatter={(value: string) => (
+                      <span className="text-sm text-white/50">{value}</span>
+                    )}
+                  />
+                </PieChart>
               </ResponsiveContainer>
             </ChartCard>
           </div>
