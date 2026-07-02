@@ -154,17 +154,12 @@ async function getEmbedState(databases) {
 async function updateEmbedInDiscord(embedState, acceptedUsers, log) {
   if (!embedState) return;
 
-  const pings = acceptedUsers
-    .filter((u) => u.discordId)
-    .map((u) => `<@${u.discordId}>`)
-    .join(" ");
-
   const userList = acceptedUsers
     .map((u, i) => {
       const ign = u.minecraftIGN || "N/A";
       const disc = u.discordUsername || "N/A";
-      const rating = u.rating || 0;
-      return `${i + 1}. **${ign}** — ${disc} (${rating}%)`;
+      const tag = u.discordId ? `<@${u.discordId}>` : "";
+      return `${i + 1}. **${ign}** — ${disc} ${tag}`;
     })
     .join("\n");
 
@@ -182,7 +177,7 @@ async function updateEmbedInDiscord(embedState, acceptedUsers, log) {
   };
 
   const body = {
-    content: pings || "Accepted players list",
+    content: `Accepted players list (${acceptedUsers.length} total)`,
     embeds: [embed],
     allowed_mentions: { parse: [] },
   };
@@ -342,17 +337,12 @@ module.exports = async function (context) {
 
         const acceptedUsers = await getAcceptedUsers(databases);
 
-        const pings = acceptedUsers
-          .filter((u) => u.discordId)
-          .map((u) => `<@${u.discordId}>`)
-          .join(" ");
-
         const userList = acceptedUsers
           .map((u, i) => {
             const ign = u.minecraftIGN || "N/A";
             const disc = u.discordUsername || "N/A";
-            const rating = u.rating || 0;
-            return `${i + 1}. **${ign}** — ${disc} (${rating}%)`;
+            const tag = u.discordId ? `<@${u.discordId}>` : "";
+            return `${i + 1}. **${ign}** — ${disc} ${tag}`;
           })
           .join("\n");
 
@@ -370,7 +360,7 @@ module.exports = async function (context) {
         };
 
         const msgBody = {
-          content: pings || "Accepted players list",
+          content: `Accepted players list (${acceptedUsers.length} total)`,
           embeds: [embed],
           allowed_mentions: { parse: [] },
         };
