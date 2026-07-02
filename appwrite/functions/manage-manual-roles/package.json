@@ -1,0 +1,9 @@
+{
+  "name": "manage-manual-roles",
+  "version": "1.0.0",
+  "description": "Manually accept users, send DM, and manage Discord embed for accepted players.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}

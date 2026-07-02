@@ -1,0 +1,9 @@
+{
+  "name": "get-all-applications",
+  "version": "1.0.0",
+  "description": "Fetch all applications with review data and accepted status.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}
