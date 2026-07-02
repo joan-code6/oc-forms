@@ -408,12 +408,12 @@ export function ModeratorStatisticsPage() {
                     dataKey="date"
                     tickFormatter={formatDate}
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                     allowDecimals={false}
                   />
                   <Tooltip
@@ -444,11 +444,11 @@ export function ModeratorStatisticsPage() {
                   <XAxis
                     dataKey="bucket"
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 10 }}
+                    tick={{ fontSize: 10, fill: "rgba(255,255,255,0.6)" }}
                   />
                   <YAxis
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                     allowDecimals={false}
                   />
                   <Tooltip content={<ChartTooltip />} />
@@ -480,12 +480,12 @@ export function ModeratorStatisticsPage() {
                     dataKey="date"
                     tickFormatter={formatDate}
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                     allowDecimals={false}
                   />
                   <Tooltip
@@ -521,14 +521,14 @@ export function ModeratorStatisticsPage() {
                   <XAxis
                     type="number"
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                     allowDecimals={false}
                   />
                   <YAxis
                     type="category"
                     dataKey="username"
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                     width={120}
                   />
                   <Tooltip content={<ChartTooltip />} />
@@ -553,7 +553,7 @@ export function ModeratorStatisticsPage() {
                   <XAxis
                     dataKey="timezone"
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 9 }}
+                    tick={{ fontSize: 9, fill: "rgba(255,255,255,0.6)" }}
                     interval={0}
                     angle={-45}
                     textAnchor="end"
@@ -561,7 +561,7 @@ export function ModeratorStatisticsPage() {
                   />
                   <YAxis
                     stroke="rgba(255,255,255,0.2)"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                     allowDecimals={false}
                   />
                   <Tooltip content={<ChartTooltip />} />
