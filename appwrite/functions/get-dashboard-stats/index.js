@@ -231,8 +231,7 @@ function computeReviewsOverTime(reviews) {
   return sorted;
 }
 
-    return res.json({
-      overview: {
+module.exports = async function (context) {
   const { req, res, log, error } = context;
 
   const userId = req.headers?.["x-appwrite-user-id"];
