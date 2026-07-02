@@ -1,0 +1,9 @@
+{
+  "name": "get-dashboard-stats",
+  "version": "1.0.0",
+  "description": "Returns comprehensive dashboard statistics: status breakdowns, time series, rating distributions, moderator workload, and timezone distribution.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

@@ -78,6 +78,19 @@
         ]
     },
     {
+        "$id": "get-dashboard-stats",
+        "name": "Get Dashboard Stats",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/get-dashboard-stats",
+        "timeout": 60,
+        "execute": [
+            "users"
+        ]
+    },
+    {
         "$id": "create-invite-link",
         "name": "Create Invite Link",
         "runtime": "node-25",

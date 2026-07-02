@@ -18,6 +18,7 @@ import { InviteDashboardPage } from "@/pages/invite-dashboard"
 import { InviteRedeemPage } from "@/pages/invite-redeem"
 import { ModeratorExportPage } from "@/pages/moderator-export"
 import { ModeratorApplicationsPage } from "@/pages/moderator-applications"
+import { ModeratorStatisticsPage } from "@/pages/moderator-statistics"
 import { DebugPage } from "@/pages/debug"
 
 const queryClient = new QueryClient({
@@ -46,6 +47,7 @@ export default function App() {
                 <Route path="/moderator/unscored" element={<UnscoredApplicationsPage />} />
                 <Route path="/moderator/export" element={<ModeratorExportPage />} />
                 <Route path="/moderator/applications" element={<ModeratorApplicationsPage />} />
+                <Route path="/moderator/statistics" element={<ModeratorStatisticsPage />} />
                 <Route path="/no-access" element={<NoAccessPage />} />
                 <Route path="/preview-images" element={<PreviewImagesPage />} />
                 <Route path="/invites" element={<InviteDashboardPage />} />
