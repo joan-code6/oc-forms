@@ -157,9 +157,8 @@ async function updateEmbedInDiscord(embedState, acceptedUsers, log) {
   const userList = acceptedUsers
     .map((u, i) => {
       const ign = u.minecraftIGN || "N/A";
-      const disc = u.discordUsername || "N/A";
       const tag = u.discordId ? `<@${u.discordId}>` : "";
-      return `${i + 1}. **${ign}** — ${disc} ${tag}`;
+      return `${i + 1}. ${tag} — **${ign}**`;
     })
     .join("\n");
 
@@ -239,6 +238,7 @@ async function addAcceptedLabel(users, databases, userId, adminUsername, log) {
       rating: app.rating || 0,
       assignedAt: new Date().toISOString(),
       assignedBy: adminUsername || "manual",
+      dmSent: false,
     }
   );
 
@@ -303,6 +303,21 @@ module.exports = async function (context) {
           log(`DM sent to ${result.discordUsername}: ${dmResult.success ? "ok" : dmResult.error}`);
         }
 
+        if (dmResult.success) {
+          try {
+            const acceptedDocs = await databases.listDocuments(
+              DATABASE_ID,
+              ACCEPTED_EVENT_COLLECTION_ID,
+              [Query.equal("userId", targetUserId), Query.limit(1)]
+            );
+            for (const doc of acceptedDocs.documents) {
+              await databases.updateDocument(DATABASE_ID, ACCEPTED_EVENT_COLLECTION_ID, doc.$id, { dmSent: true });
+            }
+          } catch (e) {
+            log(`Failed to update dmSent: ${e.message}`);
+          }
+        }
+
         const embedState = await getEmbedState(databases);
         await updateEmbedInDiscord(embedState, await getAcceptedUsers(databases), log);
 
@@ -340,9 +355,8 @@ module.exports = async function (context) {
         const userList = acceptedUsers
           .map((u, i) => {
             const ign = u.minecraftIGN || "N/A";
-            const disc = u.discordUsername || "N/A";
             const tag = u.discordId ? `<@${u.discordId}>` : "";
-            return `${i + 1}. **${ign}** — ${disc} ${tag}`;
+            return `${i + 1}. ${tag} — **${ign}**`;
           })
           .join("\n");
 
