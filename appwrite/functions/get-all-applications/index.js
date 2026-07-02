@@ -146,21 +146,28 @@ module.exports = async function (context) {
       getAcceptedUsers(databases),
     ]);
 
-    const formatted = applications.map((app) => ({
-      id: app.$id,
-      userId: app.userID,
-      minecraftIGN: app.minecraftIGN || "",
-      skinUrl: `https://mc-heads.net/body/${encodeURIComponent(app.minecraftIGN || "steve")}`,
-      discordUsername: app.discordUsername || "",
-      discordId: app.discordId || "",
-      timezone: app.timezone || "",
-      createdAt: app.createdAt || "",
-      status: app.status || "",
-      rating: app.rating || 0,
-      ratingZone: app.ratingZone || "",
-      isAccepted: acceptedUserIds.has(app.userID),
-      reviews: reviewsByApp[app.$id] || [],
-    }));
+    const formatted = applications.map((app) => {
+      const reviews = reviewsByApp[app.$id] || [];
+      const avgRating = reviews.length > 0
+        ? Math.round(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length)
+        : 0;
+      const avgZone = avgRating >= 76 ? "green" : avgRating >= 51 ? "yellow" : avgRating >= 26 ? "orange" : "red";
+      return {
+        id: app.$id,
+        userId: app.userID,
+        minecraftIGN: app.minecraftIGN || "",
+        skinUrl: `https://mc-heads.net/body/${encodeURIComponent(app.minecraftIGN || "steve")}`,
+        discordUsername: app.discordUsername || "",
+        discordId: app.discordId || "",
+        timezone: app.timezone || "",
+        createdAt: app.createdAt || "",
+        status: app.status || "",
+        rating: avgRating,
+        ratingZone: avgZone,
+        isAccepted: acceptedUserIds.has(app.userID),
+        reviews,
+      };
+    });
 
     log(`Fetched ${formatted.length} applications with review data`);
     return res.json({
