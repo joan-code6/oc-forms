@@ -58,6 +58,15 @@ async function verifyStaffRole(userId) {
   }
 }
 
+async function getTotalUsers(usersClient) {
+  try {
+    const result = await usersClient.list([Query.limit(1)]);
+    return result.total;
+  } catch {
+    return 0;
+  }
+}
+
 async function getAllApplications(databases) {
   const allApps = [];
   let offset = 0;
@@ -222,6 +231,36 @@ function computeReviewsOverTime(reviews) {
   return sorted;
 }
 
+function computeUserAppDistribution(applications) {
+  const byUser = {};
+
+  for (const app of applications) {
+    const uid = app.userID || "unknown";
+    byUser[uid] = (byUser[uid] || 0) + 1;
+  }
+
+  const counts = Object.values(byUser);
+  const distribution = {
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5+": 0,
+  };
+
+  for (const c of counts) {
+    if (c === 1) distribution["1"]++;
+    else if (c === 2) distribution["2"]++;
+    else if (c === 3) distribution["3"]++;
+    else if (c === 4) distribution["4"]++;
+    else distribution["5+"]++;
+  }
+
+  return Object.entries(distribution)
+    .filter(([, v]) => v > 0)
+    .map(([label, count]) => ({ label, count }));
+}
+
 module.exports = async function (context) {
   const { req, res, log, error } = context;
 
@@ -240,10 +279,12 @@ module.exports = async function (context) {
   try {
     const client = getServerClient();
     const databases = new Databases(client);
+    const usersClient = new Users(client);
 
-    const [applications, reviews] = await Promise.all([
+    const [applications, reviews, totalUsers] = await Promise.all([
       getAllApplications(databases),
       getAllReviews(databases),
+      getTotalUsers(usersClient),
     ]);
 
     const statusDistribution = computeStatusDistribution(applications);
@@ -279,6 +320,24 @@ module.exports = async function (context) {
       ? Math.round((acceptedCount / ratedApps.size) * 100)
       : 0;
 
+    const uniqueApplicants = new Set();
+    const userAppCounts = {};
+    for (const app of applications) {
+      const uid = app.userID;
+      if (uid) {
+        uniqueApplicants.add(uid);
+        userAppCounts[uid] = (userAppCounts[uid] || 0) + 1;
+      }
+    }
+
+    const repeatApplicants = Object.values(userAppCounts).filter(c => c > 1).length;
+    const conversionRate = totalUsers > 0
+      ? Math.round((uniqueApplicants.size / totalUsers) * 100)
+      : 0;
+    const avgAppsPerUser = uniqueApplicants.size > 0
+      ? +(total / uniqueApplicants.size).toFixed(1)
+      : 0;
+
     return res.json({
       overview: {
         totalApplications: total,
@@ -290,6 +349,11 @@ module.exports = async function (context) {
         totalReviews,
         uniqueModerators: reviewers.size,
         acceptanceRate,
+        totalUsers,
+        uniqueApplicants: uniqueApplicants.size,
+        conversionRate,
+        repeatApplicants,
+        avgAppsPerUser,
       },
       statusDistribution,
       applicationsOverTime: computeApplicationsOverTime(applications),
@@ -298,6 +362,7 @@ module.exports = async function (context) {
       timezoneDistribution: computeTimezoneDistribution(applications),
       ratingZoneDistribution: computeRatingZoneDistribution(reviews),
       reviewsOverTime: computeReviewsOverTime(reviews),
+      userAppDistribution: computeUserAppDistribution(applications),
     });
   } catch (e) {
     error("Failed to fetch dashboard stats:", e.message);

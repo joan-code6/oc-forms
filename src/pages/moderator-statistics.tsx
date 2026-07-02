@@ -18,6 +18,11 @@ import {
   UserCheck,
   Target,
   XCircle,
+  Users,
+  UserRoundCheck,
+  Percent,
+  Repeat,
+  Hash,
 } from "lucide-react"
 import {
   AreaChart,
@@ -48,6 +53,11 @@ interface OverviewStats {
   totalReviews: number
   uniqueModerators: number
   acceptanceRate: number
+  totalUsers: number
+  uniqueApplicants: number
+  conversionRate: number
+  repeatApplicants: number
+  avgAppsPerUser: number
 }
 
 interface StatusDistribution {
@@ -84,6 +94,11 @@ interface ZoneEntry {
   count: number
 }
 
+interface UserAppBucket {
+  label: string
+  count: number
+}
+
 interface DashboardStats {
   overview: OverviewStats
   statusDistribution: StatusDistribution
@@ -93,6 +108,7 @@ interface DashboardStats {
   timezoneDistribution: TimezoneEntry[]
   ratingZoneDistribution: ZoneEntry[]
   reviewsOverTime: TimeSeriesEntry[]
+  userAppDistribution: UserAppBucket[]
 }
 
 const CHART_COLORS = ["#b57bee", "#4ade80", "#f97316", "#eab308", "#ef4444"]
@@ -263,12 +279,12 @@ export function ModeratorStatisticsPage() {
       {loading && !stats ? (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
+            {Array.from({ length: 13 }).map((_, i) => (
               <Skeleton key={i} className="h-24 rounded-lg" />
             ))}
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 7 }).map((_, i) => (
               <Skeleton key={i} className="h-80 rounded-lg" />
             ))}
           </div>
@@ -317,6 +333,32 @@ export function ModeratorStatisticsPage() {
               label="Moderators"
               value={stats.overview.uniqueModerators}
               icon={UserCheck}
+            />
+            <StatCard
+              label="Auth Users"
+              value={stats.overview.totalUsers}
+              icon={Users}
+            />
+            <StatCard
+              label="Applicants"
+              value={stats.overview.uniqueApplicants}
+              icon={UserRoundCheck}
+            />
+            <StatCard
+              label="Conversion"
+              value={stats.overview.conversionRate}
+              icon={Percent}
+              suffix="%"
+            />
+            <StatCard
+              label="Repeat Apps"
+              value={stats.overview.repeatApplicants}
+              icon={Repeat}
+            />
+            <StatCard
+              label="Avg Apps/User"
+              value={stats.overview.avgAppsPerUser}
+              icon={Hash}
             />
           </div>
 
@@ -571,6 +613,47 @@ export function ModeratorStatisticsPage() {
                     radius={[4, 4, 0, 0]}
                     fill="#f97316"
                     maxBarSize={36}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="Applications per User" className="lg:col-span-2">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={stats.userAppDistribution}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(255,255,255,0.05)"
+                  />
+                  <XAxis
+                    dataKey="label"
+                    stroke="rgba(255,255,255,0.2)"
+                    tick={{ fontSize: 12, fill: "rgba(255,255,255,0.6)" }}
+                    label={{
+                      value: "Applications",
+                      position: "insideBottom",
+                      offset: -5,
+                      style: { fill: "rgba(255,255,255,0.3)", fontSize: 11 },
+                    }}
+                  />
+                  <YAxis
+                    stroke="rgba(255,255,255,0.2)"
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
+                    allowDecimals={false}
+                    label={{
+                      value: "Users",
+                      angle: -90,
+                      position: "insideLeft",
+                      style: { fill: "rgba(255,255,255,0.3)", fontSize: 11 },
+                    }}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Bar
+                    dataKey="count"
+                    name="Users"
+                    radius={[4, 4, 0, 0]}
+                    fill="#3b82f6"
+                    maxBarSize={48}
                   />
                 </BarChart>
               </ResponsiveContainer>
