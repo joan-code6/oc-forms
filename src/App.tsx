@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { Toaster } from "sonner"
 import { ErrorBoundary } from "@/components/error-boundary"
+import { CookieConsentBanner } from "@/components/cookie-consent"
+import { useCookieConsent } from "@/hooks/use-cookie-consent"
 import { FormPage } from "@/pages/form"
 import { AuthCallback } from "@/pages/auth-callback"
 import { ModeratorDashboardPage } from "@/pages/moderator-dashboard"
@@ -28,6 +30,8 @@ const queryClient = new QueryClient({
 })
 
 export default function App() {
+  const { consent, accept, decline } = useCookieConsent()
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -59,6 +63,33 @@ export default function App() {
             <footer className="mt-auto border-t border-white/5 py-6 text-center">
               <p className="text-xs text-white/20">
                 OutCraft &copy; {new Date().getFullYear()}
+                <span className="mx-2 text-white/10">|</span>
+                <a
+                  href="https://tos.outcraft.net"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-white/50"
+                >
+                  Terms
+                </a>
+                <span className="mx-2 text-white/10">|</span>
+                <a
+                  href="https://tos.outcraft.net#privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-white/50"
+                >
+                  Privacy
+                </a>
+                <span className="mx-2 text-white/10">|</span>
+                <a
+                  href="https://tos.outcraft.net#cookies"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-white/50"
+                >
+                  Cookies
+                </a>
               </p>
             </footer>
           </div>
@@ -72,6 +103,9 @@ export default function App() {
               },
             }}
           />
+          {consent === null && (
+            <CookieConsentBanner onAccept={accept} onDecline={decline} />
+          )}
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>
