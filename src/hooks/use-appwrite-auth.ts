@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { getCurrentUser, discordLogin, logout, getSession, shouldShowHelpPopup } from "@/lib/appwrite"
+import { identifyUser, resetUser, captureEvent } from "@/lib/posthog"
 import type { Models } from "appwrite"
 import { toast } from "sonner"
 
@@ -57,12 +58,17 @@ export function useAppwriteAuth() {
       }
       const currentUser = await getCurrentUser()
       if (currentUser) {
-        setUser({
+        const discordUser = {
           id: currentUser.$id,
           name: currentUser.name,
           email: currentUser.email,
           avatar: currentUser.prefs?.avatar ?? undefined,
           raw: currentUser,
+        }
+        setUser(discordUser)
+        identifyUser(currentUser.$id, {
+          discord_name: currentUser.name,
+          email: currentUser.email,
         })
       } else {
         setUser(null)
@@ -94,12 +100,17 @@ export function useAppwriteAuth() {
         const currentUser = await getCurrentUser()
         if (cancelled) return
         if (currentUser) {
-          setUser({
+          const discordUser = {
             id: currentUser.$id,
             name: currentUser.name,
             email: currentUser.email,
             avatar: currentUser.prefs?.avatar ?? undefined,
             raw: currentUser,
+          }
+          setUser(discordUser)
+          identifyUser(currentUser.$id, {
+            discord_name: currentUser.name,
+            email: currentUser.email,
           })
         } else {
           setUser(null)
@@ -127,6 +138,8 @@ export function useAppwriteAuth() {
     try {
       await logout()
       setUser(null)
+      captureEvent("user_logged_out")
+      resetUser()
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to logout")
     }

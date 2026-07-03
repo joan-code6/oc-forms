@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAppwriteAuth } from "@/hooks/use-appwrite-auth"
 import { useMinecraftValidation } from "@/hooks/use-minecraft-validation"
 import { callFunction } from "@/lib/functions"
+import { captureEvent } from "@/lib/posthog"
 import { LogIn, Send, CheckCircle2, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import { BackgroundSlideshow } from "@/components/background-slideshow"
@@ -26,6 +27,12 @@ export function InviteRedeemPage() {
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
   const { user, loading: authLoading, loginWithDiscord } = useAppwriteAuth()
+
+  useEffect(() => {
+    if (code) {
+      captureEvent("invite_viewed", { invite_code: code })
+    }
+  }, [code])
 
   const [minecraftIGN, setMinecraftIGN] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -53,14 +60,26 @@ export function InviteRedeemPage() {
 
       if (result.success) {
         setSubmitted(true)
+        captureEvent("invite_redeemed", {
+          invite_code: code,
+          minecraft_ign: minecraftIGN.trim(),
+        })
         try {
           localStorage.setItem(SUBMITTED_KEY, "true")
         } catch { /* ignore */ }
         toast.success("Application submitted successfully!")
       } else {
+        captureEvent("invite_redeem_error", {
+          invite_code: code,
+          error: result.error || "unknown",
+        })
         toast.error(result.error || "Failed to submit application.")
       }
     } catch (e) {
+      captureEvent("invite_redeem_error", {
+        invite_code: code,
+        error: e instanceof Error ? e.message : "network_error",
+      })
       toast.error(e instanceof Error ? e.message : "Failed to submit application.")
     } finally {
       setSubmitting(false)
