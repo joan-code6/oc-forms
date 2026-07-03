@@ -19,6 +19,7 @@ import { toast } from "sonner"
 import { LogIn, ArrowRight, ArrowLeft, PauseCircle, AlertTriangle } from "lucide-react"
 import { BackgroundSlideshow } from "@/components/background-slideshow"
 import { callFunction } from "@/lib/functions"
+import { captureEvent } from "@/lib/posthog"
 import { checkStorage, isPrivacyBrowserLikely } from "@/lib/storage-check"
 
 const TOTAL_PAGES = 6
@@ -89,6 +90,7 @@ function FormContent() {
   const { state, dispatch, validate, isFormComplete } = useForm()
   const { user, loading, error, loginWithDiscord } = useAppwriteAuth()
   const submitMutation = useSubmitApplication()
+  const startedTrackedRef = useRef(false)
 
   const { data: minecraftData } = useMinecraftValidation(state.minecraftIGN)
 
@@ -123,6 +125,15 @@ function FormContent() {
       })
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (startedTrackedRef.current) return
+    if (!user || loading || checkingStatus) return
+    startedTrackedRef.current = true
+    captureEvent("form_started", {
+      discord_user_id: user.id,
+    })
+  }, [user, loading, checkingStatus])
 
   const isFormReady = !!user && !loading
   const currentPage = state.currentPage
@@ -167,6 +178,7 @@ function FormContent() {
 
   const handleNext = useCallback(() => {
     if (currentPage === 1) {
+      captureEvent("form_step_completed", { step: 1, step_label: "welcome" })
       dispatch({ type: "SET_PAGE", page: 2 })
       return
     }
@@ -181,6 +193,11 @@ function FormContent() {
     }
 
     if (currentPage < TOTAL_PAGES) {
+      const stepLabels = ["welcome", "profile", "questions", "experience", "skills", "kingdom"]
+      captureEvent("form_step_completed", {
+        step: currentPage,
+        step_label: stepLabels[currentPage - 1] || `step_${currentPage}`,
+      })
       dispatch({ type: "SET_PAGE", page: currentPage + 1 })
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
@@ -215,6 +232,11 @@ function FormContent() {
 
     dispatch({ type: "SET_SUBMITTING", value: true })
 
+    captureEvent("form_submitted", {
+      minecraft_ign: state.minecraftIGN.trim(),
+      step_count: currentPage,
+    })
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { q3: _q3, q4: _q4, ...backendYesNoAnswers } = state.yesNoAnswers
 
@@ -231,6 +253,9 @@ function FormContent() {
           dispatch({ type: "SET_SUBMITTING", value: false })
           if (result.success) {
             dispatch({ type: "SET_SUBMITTED", value: true })
+            captureEvent("form_submit_success", {
+              minecraft_ign: state.minecraftIGN.trim(),
+            })
             try {
               sessionStorage.removeItem("outcraft-form")
             } catch {
@@ -238,11 +263,19 @@ function FormContent() {
             }
             toast.success("Application submitted successfully!")
           } else {
+            captureEvent("form_submit_error", {
+              error: result.error || "unknown",
+              minecraft_ign: state.minecraftIGN.trim(),
+            })
             toast.error(result.error || "Failed to submit application.")
           }
         },
         onError: (err) => {
           dispatch({ type: "SET_SUBMITTING", value: false })
+          captureEvent("form_submit_error", {
+            error: err instanceof Error ? err.message : "network_error",
+            minecraft_ign: state.minecraftIGN.trim(),
+          })
           toast.error(
             err instanceof Error
               ? err.message

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
 import { callFunction } from "@/lib/functions"
+import { captureEvent } from "@/lib/posthog"
 import { ChevronRight, ArrowLeft, AlertTriangle, SkipForward } from "lucide-react"
 
 const NEXT_APP_FUNCTION_ID =
@@ -92,16 +93,25 @@ export function ModeratorReviewPage() {
       .then((result) => {
         if (cancelled) return
         setApplication(result.application)
-        if (!result.application && !passedApplicationId) {
+        if (result.application) {
+          captureEvent("review_loaded", {
+            application_id: result.application.id,
+            minecraft_ign: result.application.minecraftIGN,
+          })
+        } else if (!passedApplicationId) {
           setLoadError("No more applications to review.")
-        } else if (!result.application && passedApplicationId) {
+          captureEvent("review_queue_empty")
+        } else {
           setLoadError("Application not found or already reviewed.")
+          captureEvent("review_load_error", { reason: "not_found" })
         }
       })
       .catch((e) => {
         if (cancelled) return
         setApplication(null)
-        setLoadError(e instanceof Error ? e.message : "Failed to load application.")
+        const errorMsg = e instanceof Error ? e.message : "Failed to load application."
+        setLoadError(errorMsg)
+        captureEvent("review_load_error", { error: errorMsg })
       })
       .finally(() => {
         if (!cancelled) setLoadingApp(false)
@@ -118,6 +128,12 @@ export function ModeratorReviewPage() {
     if (!application || rating === null) return
     setSubmitting(true)
     setSubmitError(null)
+    captureEvent("review_submitted", {
+      application_id: application.id,
+      rating,
+      minecraft_ign: application.minecraftIGN,
+      has_note: !!moderatorNote.trim(),
+    })
     try {
       const result = await callFunction<RatingResult>(RATING_FUNCTION_ID, {
         applicationId: application.id,
@@ -131,9 +147,17 @@ export function ModeratorReviewPage() {
         setModeratorNote("")
         await loadApplication()
       } else {
+        captureEvent("review_submit_error", {
+          application_id: application.id,
+          error: result.error || "unknown",
+        })
         setSubmitError(result.error || "Failed to save rating.")
       }
     } catch (e) {
+      captureEvent("review_submit_error", {
+        application_id: application.id,
+        error: e instanceof Error ? e.message : "network_error",
+      })
       setSubmitError(e instanceof Error ? e.message : "Failed to save rating.")
     } finally {
       setSubmitting(false)
@@ -141,6 +165,12 @@ export function ModeratorReviewPage() {
   }
 
   const handleSkip = () => {
+    if (application) {
+      captureEvent("review_skipped", {
+        application_id: application.id,
+        minecraft_ign: application.minecraftIGN,
+      })
+    }
     setRating(null)
     setHasSelected(false)
     setModeratorNote("")
