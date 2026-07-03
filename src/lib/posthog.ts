@@ -1,25 +1,16 @@
 import posthog from "posthog-js"
 
-let initialized = false
+export const posthogOptions = {
+  api_host: import.meta.env.VITE_POSTHOG_HOST,
+  person_profiles: "identified_only" as const,
+  capture_pageview: true,
+  capture_pageleave: false,
+}
 
 export function initPostHog() {
   if (typeof window === "undefined") return
-  if (posthog.has_opted_out_capturing()) {
-    posthog.opt_in_capturing()
-  }
 
-  if (initialized) {
-    posthog.opt_in_capturing()
-    return
-  }
-
-  posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST,
-    person_profiles: "identified_only",
-    capture_pageview: true,
-    capture_pageleave: false,
-  })
-  initialized = true
+  posthog.init(import.meta.env.VITE_POSTHOG_KEY, posthogOptions)
 }
 
 export function disablePostHog() {

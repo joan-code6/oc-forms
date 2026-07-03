@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react"
+import posthog from "posthog-js"
 
 interface Props {
   children: ReactNode
@@ -14,6 +15,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    posthog.captureException(error, {
+      componentStack: errorInfo.componentStack,
+    })
   }
 
   render() {
