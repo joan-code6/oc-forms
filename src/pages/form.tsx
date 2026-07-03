@@ -467,6 +467,30 @@ function FormContent() {
         </div>
       </div>
 
+      {isFormReady && currentPage === TOTAL_PAGES && (
+        <p className="text-center text-[11px] leading-relaxed text-white/15">
+          By submitting, you agree to our{" "}
+          <a
+            href="https://tos.outcraft.net#privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 transition-colors hover:text-white/30"
+          >
+            Privacy Policy
+          </a>{" "}
+          and{" "}
+          <a
+            href="https://tos.outcraft.net"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 transition-colors hover:text-white/30"
+          >
+            Terms of Service
+          </a>
+          .
+        </p>
+      )}
+
       {isFormReady && !isFormComplete && currentPage === TOTAL_PAGES && (
         <div className="animate-in flex items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-center text-sm text-amber-400/80">
           Please fill out all questions before submitting.
