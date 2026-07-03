@@ -1,7 +1,8 @@
 import posthog from "posthog-js"
 
 export const posthogOptions = {
-  api_host: import.meta.env.VITE_POSTHOG_HOST,
+  api_host: "https://t.outcraft.net",
+  ui_host: "https://eu.posthog.com",
   person_profiles: "identified_only" as const,
   capture_pageview: true,
   capture_pageleave: false,
