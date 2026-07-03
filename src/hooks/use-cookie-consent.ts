@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react"
+import { initPostHog, disablePostHog } from "@/lib/posthog"
 
 const STORAGE_KEY = "oc_cookie_consent"
 
@@ -18,11 +19,13 @@ export function useCookieConsent() {
 
   const accept = useCallback(() => {
     localStorage.setItem(STORAGE_KEY, "accepted")
+    initPostHog()
     setConsent(true)
   }, [])
 
   const decline = useCallback(() => {
     localStorage.setItem(STORAGE_KEY, "declined")
+    disablePostHog()
     setConsent(false)
   }, [])
 

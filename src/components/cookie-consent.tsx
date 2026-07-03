@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 
 export function CookieConsentBanner({
   onAccept,
@@ -7,58 +7,69 @@ export function CookieConsentBanner({
   onAccept: () => void
   onDecline: () => void
 }) {
-  const [visible, setVisible] = useState(false)
-
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(true), 400)
-    return () => clearTimeout(timer)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
   }, [])
-
-  const handleAccept = () => {
-    setVisible(false)
-    setTimeout(onAccept, 300)
-  }
-
-  const handleDecline = () => {
-    setVisible(false)
-    setTimeout(onDecline, 300)
-  }
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-0 z-50 transition-transform duration-300 ${
-        visible ? "translate-y-0" : "translate-y-full"
-      }`}
+      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Cookie consent"
     >
-      <div className="border-t border-white/10 bg-[oklch(0.13_0.01_260)]/95 px-6 py-5 backdrop-blur-md shadow-[0_-4px_24px_rgba(0,0,0,0.4)]">
-        <div className="mx-auto flex max-w-3xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-relaxed text-white/60">
-            We use essential cookies for authentication and analytics cookies
-            (via PostHog) to understand how our platform is used. By clicking
-            &quot;Accept&quot; you consent to analytics cookies. See our{" "}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+
+      <div className="relative mx-4 w-full max-w-lg rounded-2xl border border-white/10 bg-[oklch(0.13_0.01_260)] p-8 shadow-2xl">
+        <div className="flex flex-col items-center text-center">
+          <svg
+            className="mb-4 h-10 w-10 text-purple-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"
+            />
+          </svg>
+
+          <h2 className="mb-2 text-xl font-bold text-white">We use cookies</h2>
+
+          <p className="mb-6 text-sm leading-relaxed text-white/50">
+            This site uses essential cookies for authentication and analytics
+            cookies (via PostHog) to improve your experience. By continuing,
+            you agree to our use of cookies.
+          </p>
+
+          <button
+            onClick={onAccept}
+            className="mb-2 w-full cursor-pointer rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-purple-600/30 transition-all hover:from-purple-500 hover:to-purple-400 hover:shadow-purple-500/40 active:scale-[0.98]"
+          >
+            Accept &amp; Continue
+          </button>
+
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-white/20">
+            <button
+              onClick={onDecline}
+              className="cursor-pointer transition-colors hover:text-white/35"
+            >
+              Decline
+            </button>
             <a
               href="https://tos.outcraft.net#cookies"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline underline-offset-2 transition-colors hover:text-white/90"
+              className="transition-colors hover:text-white/35"
             >
               Cookie Policy
-            </a>{" "}
-            for details.
-          </p>
-          <div className="flex shrink-0 gap-3">
-            <button
-              onClick={handleDecline}
-              className="cursor-pointer rounded-lg border border-white/10 px-4 py-2 text-sm text-white/50 transition-colors hover:border-white/20 hover:text-white/70"
-            >
-              Decline
-            </button>
-            <button
-              onClick={handleAccept}
-              className="cursor-pointer rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
-            >
-              Accept
-            </button>
+            </a>
           </div>
         </div>
       </div>
