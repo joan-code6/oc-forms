@@ -59,3 +59,14 @@ export function captureEvent(
     /* posthog not available or opted out */
   }
 }
+
+export function captureOAuthError(message: string, code?: string) {
+  try {
+    posthog.captureException(new Error(message), {
+      source: "oauth_callback",
+      errorCode: code || "unknown",
+    })
+  } catch {
+    /* ignore */
+  }
+}
