@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from "react"
+import { useCallback, useState, useEffect, useRef, startTransition } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -179,7 +179,9 @@ function FormContent() {
   const handleNext = useCallback(() => {
     if (currentPage === 1) {
       captureEvent("form_step_completed", { step: 1, step_label: "welcome" })
-      dispatch({ type: "SET_PAGE", page: 2 })
+      startTransition(() => {
+        dispatch({ type: "SET_PAGE", page: 2 })
+      })
       return
     }
 
@@ -198,14 +200,18 @@ function FormContent() {
         step: currentPage,
         step_label: stepLabels[currentPage - 1] || `step_${currentPage}`,
       })
-      dispatch({ type: "SET_PAGE", page: currentPage + 1 })
+      startTransition(() => {
+        dispatch({ type: "SET_PAGE", page: currentPage + 1 })
+      })
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
   }, [currentPage, validatePage, dispatch])
 
   const handleBack = useCallback(() => {
     if (currentPage > 1) {
-      dispatch({ type: "SET_PAGE", page: currentPage - 1 })
+      startTransition(() => {
+        dispatch({ type: "SET_PAGE", page: currentPage - 1 })
+      })
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
   }, [currentPage, dispatch])
@@ -353,7 +359,7 @@ function FormContent() {
       )}
       {/* Page 1: Welcome */}
       {currentPage === 1 && (
-        <Card className="form-card animate-in">
+        <Card key="page-1" className="form-card animate-in">
           <CardContent className="p-6">
             <WelcomeCard
               user={user}
@@ -367,7 +373,7 @@ function FormContent() {
 
       {/* Page 2: Username + Avatar + Timezone */}
       {currentPage === 2 && (
-        <>
+        <div key="page-2">
           <Card className="form-card animate-in">
             <CardContent className="p-6">
               <UsernameCard />
@@ -386,12 +392,12 @@ function FormContent() {
               <TimezoneCard />
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
 
       {/* Page 3: Short questions (Yes/No + Dropdown) */}
       {currentPage === 3 && (
-        <>
+        <div key="page-3">
           <Card className="form-card animate-in">
             <CardContent className="p-6">
               <YesNoTableCard />
@@ -402,12 +408,12 @@ function FormContent() {
               <DropdownCard />
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
 
       {/* Pages 4-6: Text questions */}
       {currentPage >= 4 && currentPage <= 6 && (
-        <Card className="form-card animate-in">
+        <Card key={`page-${currentPage}`} className="form-card animate-in">
           <CardContent className="p-6">
             <TextQuestionsCard
               questions={textQuestionPages[currentPage - 4]}
