@@ -10,6 +10,7 @@ const ROLE_EMBED_STATE_COLLECTION_ID = process.env.APPWRITE_ROLE_EMBED_STATE_COL
 const DISCORD_BOT_TOKEN             = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID              = process.env.DISCORD_GUILD_ID;
 const ADMIN_ROLE_ID                 = process.env.ADMIN_ROLE_ID;
+const DISCORD_EVENT_ROLE_ID         = process.env.DISCORD_Underground_Event_Participant_ROLE_ID;
 
 function getServerClient() {
   const client = new Client();
@@ -286,19 +287,50 @@ module.exports = async function (context) {
           return res.json({ success: false, error: "Missing targetUserId." }, 400);
         }
 
-        const result = await addAcceptedLabel(userSvc, databases, targetUserId, adminUsername, log);
-
-        if (result.alreadyAccepted) {
-          return res.json({
-            success: true,
-            alreadyAccepted: true,
-            user: { username: result.discordUsername },
-          });
+        if (!DISCORD_EVENT_ROLE_ID) {
+          log("DISCORD_Underground_Event_Participant_ROLE_ID is not configured. Skipping Discord role assignment.");
         }
 
+        const result = await addAcceptedLabel(userSvc, databases, targetUserId, adminUsername, log);
+
         let dmResult = { success: false, error: "No Discord ID" };
-        const discordId = result.discordId || await getDiscordIdForUser(userSvc, targetUserId);
-        if (discordId) {
+        let roleApplied = false;
+        let roleError = null;
+
+        const discordId =
+          result.discordId ||
+          await getDiscordIdForUser(userSvc, targetUserId);
+
+        if (DISCORD_EVENT_ROLE_ID && discordId) {
+          try {
+            const roleRes = await fetch(
+              `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}/roles/${DISCORD_EVENT_ROLE_ID}`,
+              {
+                method: "PUT",
+                headers: {
+                  Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+            if (roleRes.ok) {
+              roleApplied = true;
+              log(`Role assigned to ${result.discordUsername}`);
+            } else {
+              const errText = await roleRes.text();
+              roleError = `Discord API ${roleRes.status}: ${errText}`;
+              log(`Failed to assign role to ${result.discordUsername}: ${roleError}`);
+            }
+          } catch (e) {
+            roleError = e.message;
+            log(`Error assigning role to ${result.discordUsername}: ${e.message}`);
+          }
+        } else if (!discordId) {
+          roleError = "No Discord ID found for user";
+          log(`Could not resolve Discord ID for ${result.discordUsername || targetUserId}`);
+        }
+
+        if (discordId && roleApplied && !result.alreadyAccepted) {
           dmResult = await sendDM(discordId, result.minecraftIGN);
           log(`DM sent to ${result.discordUsername}: ${dmResult.success ? "ok" : dmResult.error}`);
         }
@@ -323,7 +355,9 @@ module.exports = async function (context) {
 
         return res.json({
           success: true,
-          alreadyAccepted: false,
+          alreadyAccepted: result.alreadyAccepted,
+          roleApplied,
+          roleError,
           dmSent: dmResult.success,
           dmError: dmResult.error || null,
           user: {

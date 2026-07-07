@@ -304,7 +304,7 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/manage-discord-event-role",
-        "timeout": 60,
+        "timeout": 900,
         "execute": [
             "users"
         ]
@@ -343,7 +343,7 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/manage-manual-roles",
-        "timeout": 60,
+        "timeout": 900,
         "execute": [
             "users"
         ]

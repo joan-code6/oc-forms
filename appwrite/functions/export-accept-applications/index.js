@@ -10,6 +10,10 @@ const DISCORD_BOT_TOKEN      = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID       = process.env.DISCORD_GUILD_ID;
 const DISCORD_STAFF_ROLE_ID  = process.env.DISCORD_STAFF_ROLE_ID;
 const ADMIN_ROLE_ID          = process.env.ADMIN_ROLE_ID;
+const DISCORD_EVENT_ROLE_ID  = process.env.DISCORD_Underground_Event_Participant_ROLE_ID;
+
+const BATCH_SIZE = 45;
+const BATCH_DELAY_MS = 1100;
 
 function getServerClient() {
   const client = new Client();
@@ -54,6 +58,25 @@ async function verifyAdmin(userId) {
     };
   } catch {
     return { isAdmin: false };
+  }
+}
+
+async function discordRequest(url, options, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url, options);
+    if (res.status !== 429) return res;
+    let retryAfter = 1000;
+    try {
+      const body = await res.json();
+      if (body.retry_after) {
+        retryAfter = Math.ceil(body.retry_after * 1000) + 100;
+      }
+    } catch {}
+    if (attempt < maxRetries) {
+      await new Promise((r) => setTimeout(r, retryAfter));
+    } else {
+      return res;
+    }
   }
 }
 
@@ -162,6 +185,7 @@ module.exports = async function (context) {
 
         accepted.push({
           userId: app.userID,
+          discordId: app.discordId || "",
           discordUsername: app.discordUsername,
           minecraftIGN: app.minecraftIGN,
           rating: app.rating,
@@ -172,7 +196,74 @@ module.exports = async function (context) {
     }
 
     log(`Export completed: ${accepted.length} accepted, ${skipped} skipped`);
-    return res.json({ success: true, accepted: accepted.length, skipped, users: accepted });
+
+    let rolesAssigned = 0;
+    let rolesFailed = 0;
+
+    if (DISCORD_EVENT_ROLE_ID && accepted.length > 0) {
+      log(`Assigning Discord role to ${accepted.length} new users...`);
+
+      async function assignRoleForUser(user) {
+        let discordId = user.discordId;
+        if (!discordId) {
+          try {
+            const { identities: identityList } = await users.listIdentities([
+              Query.equal("userId", user.userId)
+            ]);
+            const discordIdentity = identityList.find((id) => id.provider === "discord");
+            discordId = discordIdentity?.providerUid;
+          } catch {}
+        }
+        if (!discordId) return { user, ok: false, error: "No Discord ID" };
+
+        const url = `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}/roles/${DISCORD_EVENT_ROLE_ID}`;
+        const res = await discordRequest(url, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          return { user, ok: false, error: `Discord API ${res.status}: ${errText}` };
+        }
+        return { user, ok: true };
+      }
+
+      let isFirstBatch = true;
+      for (let i = 0; i < accepted.length; i += BATCH_SIZE) {
+        if (!isFirstBatch) {
+          await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+        }
+        isFirstBatch = false;
+        const batch = accepted.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(batch.map(assignRoleForUser));
+        for (const r of results) {
+          if (r.ok) {
+            rolesAssigned++;
+            log(`Role assigned: ${r.user.discordUsername}`);
+          } else {
+            rolesFailed++;
+            log(`Role failed for ${r.user.discordUsername}: ${r.error}`);
+          }
+        }
+        log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${rolesAssigned} assigned, ${rolesFailed} failed (${Math.min(i + BATCH_SIZE, accepted.length)}/${accepted.length})`);
+      }
+    } else if (!DISCORD_EVENT_ROLE_ID && accepted.length > 0) {
+      log("DISCORD_Underground_Event_Participant_ROLE_ID not configured. Skipping role assignment.");
+    }
+
+    return res.json({
+      success: true,
+      accepted: accepted.length,
+      skipped,
+      rolesAssigned,
+      rolesFailed,
+      users: accepted,
+    });
+
   } catch (e) {
     error("Export failed:", e.message);
     return res.json({ success: false, error: "Failed to run export." }, 500);

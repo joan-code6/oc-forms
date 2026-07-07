@@ -64,6 +64,8 @@ interface ApplicationsResult {
 interface AcceptResult {
   success: boolean
   alreadyAccepted?: boolean
+  roleApplied?: boolean
+  roleError?: string | null
   dmSent?: boolean
   dmError?: string | null
   user?: { username?: string; minecraftIGN?: string }
@@ -193,11 +195,16 @@ export function ModeratorApplicationsPage() {
       })
       if (result.success) {
         if (result.alreadyAccepted) {
-          toast.info("User was already accepted.")
+          const roleMsg = result.roleApplied ? " — Role applied" : result.roleError ? ` — Role: ${result.roleError}` : ""
+          toast.info(`User was already accepted.${roleMsg}`)
         } else {
+          const roleMsg = result.roleApplied ? " — Role applied" : result.roleError ? ` — Role: ${result.roleError}` : " — No Discord ID"
           toast.success(
-            `Accepted ${result.user?.username || result.user?.minecraftIGN || "user"}${result.dmSent ? " — DM sent" : result.dmError ? " — DM failed" : ""}`,
+            `Accepted ${result.user?.username || result.user?.minecraftIGN || "user"}${roleMsg}${result.dmSent ? " — DM sent" : ""}`,
           )
+          if (result.roleError) {
+            toast.error(`Role: ${result.roleError}`)
+          }
           if (!result.dmSent && result.dmError) {
             toast.error(`DM: ${result.dmError}`)
           }

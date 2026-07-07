@@ -12,6 +12,31 @@ const DISCORD_STAFF_ROLE_ID  = process.env.DISCORD_STAFF_ROLE_ID;
 const ADMIN_ROLE_ID          = process.env.ADMIN_ROLE_ID;
 const DISCORD_EVENT_ROLE_ID  = process.env.DISCORD_Underground_Event_Participant_ROLE_ID;
 
+const BATCH_SIZE = 45;
+const BATCH_DELAY_MS = 1100;
+
+async function discordRequest(url, options, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url, options);
+
+    if (res.status !== 429) return res;
+
+    let retryAfter = 1000;
+    try {
+      const body = await res.json();
+      if (body.retry_after) {
+        retryAfter = Math.ceil(body.retry_after * 1000) + 100;
+      }
+    } catch {}
+
+    if (attempt < maxRetries) {
+      await new Promise((r) => setTimeout(r, retryAfter));
+    } else {
+      return res;
+    }
+  }
+}
+
 function getServerClient() {
   const client = new Client();
   client.setEndpoint(ENDPOINT).setProject(PROJECT_ID).setKey(API_KEY);
@@ -211,11 +236,20 @@ module.exports = async function (context) {
     const databases = new Databases(client);
     const users = new Users(client);
 
-    const result = await databases.listDocuments(
-      DATABASE_ID,
-      ACCEPTED_EVENT_COLLECTION_ID,
-      [Query.limit(10000)]
-    );
+    let allDocs = [];
+    let offset = 0;
+    const pageSize = 1000;
+    while (true) {
+      const page = await databases.listDocuments(
+        DATABASE_ID,
+        ACCEPTED_EVENT_COLLECTION_ID,
+        [Query.limit(pageSize), Query.offset(offset), Query.orderAsc("$id")]
+      );
+      allDocs = allDocs.concat(page.documents);
+      if (page.documents.length < pageSize) break;
+      offset += pageSize;
+    }
+    log(`Processing ${allDocs.length} accepted users for role ${action}`);
 
     let success = 0;
     let failed = 0;
@@ -223,48 +257,57 @@ module.exports = async function (context) {
     let dmFailed = 0;
     const details = [];
 
-    for (const doc of result.documents) {
-      try {
-        let discordId = doc.discordId;
+    const method = action === "assign" ? "PUT" : "DELETE";
 
-        if (!discordId) {
+    async function processDocRole(doc) {
+      let discordId = doc.discordId;
+      if (!discordId) {
+        try {
           const { identities: identityList } = await users.listIdentities([
             Query.equal("userId", doc.userId)
           ]);
           const discordIdentity = identityList.find((id) => id.provider === "discord");
           discordId = discordIdentity?.providerUid;
+        } catch {}
+      }
+      if (!discordId) {
+        return { doc, status: "failed", error: "No Discord ID found" };
+      }
+
+      const discordRes = await discordRequest(
+        `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}/roles/${DISCORD_EVENT_ROLE_ID}`,
+        {
+          method,
+          headers: {
+            Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+            "Content-Type": "application/json",
+          },
         }
+      );
 
-        if (!discordId) {
-          failed++;
-          details.push({ userId: doc.userId, discordUsername: doc.discordUsername, error: "No Discord ID found" });
-          continue;
-        }
+      if (!discordRes.ok) {
+        const resText = await discordRes.text();
+        return { doc, discordId, status: "failed", error: `Discord API ${discordRes.status}: ${resText}` };
+      }
 
-        const method = action === "assign" ? "PUT" : "DELETE";
-        const discordRes = await fetch(
-          `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}/roles/${DISCORD_EVENT_ROLE_ID}`,
-          {
-            method,
-            headers: {
-              Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+      return { doc, discordId, status: "ok" };
+    }
 
-        if (discordRes.ok) {
+    async function processBatch(batch) {
+      const results = await Promise.all(batch.map(processDocRole));
+      for (const r of results) {
+        if (r.status === "ok") {
           success++;
-          details.push({ userId: doc.userId, discordUsername: doc.discordUsername, status: "ok" });
+          details.push({ userId: r.doc.userId, discordUsername: r.doc.discordUsername, status: "ok" });
 
-          if (action === "assign" && !doc.dmSent) {
-            const dmResult = await sendDM(discordId, doc.minecraftIGN);
+          if (action === "assign" && !r.doc.dmSent) {
+            const dmResult = await sendDM(r.discordId, r.doc.minecraftIGN);
             if (dmResult.success) {
               dmSuccess++;
               try {
-                await databases.updateDocument(DATABASE_ID, ACCEPTED_EVENT_COLLECTION_ID, doc.$id, { dmSent: true });
+                await databases.updateDocument(DATABASE_ID, ACCEPTED_EVENT_COLLECTION_ID, r.doc.$id, { dmSent: true });
               } catch (e) {
-                log(`Failed to update dmSent for ${doc.discordUsername}: ${e.message}`);
+                log(`Failed to update dmSent for ${r.doc.discordUsername}: ${e.message}`);
               }
             } else {
               dmFailed++;
@@ -272,18 +315,25 @@ module.exports = async function (context) {
           }
         } else {
           failed++;
-          const resText = await discordRes.text();
-          details.push({ userId: doc.userId, discordUsername: doc.discordUsername, error: `Discord API ${discordRes.status}: ${resText}` });
+          details.push({ userId: r.doc.userId, discordUsername: r.doc.discordUsername, error: r.error });
         }
-      } catch (e) {
-        failed++;
-        details.push({ userId: doc.userId, discordUsername: doc.discordUsername, error: e.message });
       }
+    }
+
+    let isFirstBatch = true;
+    for (let i = 0; i < allDocs.length; i += BATCH_SIZE) {
+      if (!isFirstBatch) {
+        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+      }
+      isFirstBatch = false;
+      const batch = allDocs.slice(i, i + BATCH_SIZE);
+      await processBatch(batch);
+      log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${success} success, ${failed} failed so far (${Math.min(i + BATCH_SIZE, allDocs.length)}/${allDocs.length})`);
     }
 
     if (action === "assign") {
       const embedState = await getEmbedState(databases);
-      await updateEmbedInDiscord(embedState, result.documents, log);
+      await updateEmbedInDiscord(embedState, allDocs, log);
     }
 
     log(`Discord role ${action}: ${success} success, ${failed} failed, DM: ${dmSuccess} sent, ${dmFailed} failed`);

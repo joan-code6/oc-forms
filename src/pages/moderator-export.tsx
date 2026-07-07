@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useModeratorAccess } from "@/hooks/use-moderator-access"
-import { callFunction } from "@/lib/functions"
+import { callFunction, callFunctionAsync, pollAndParseExecution } from "@/lib/functions"
 import { toast } from "sonner"
 import {
   ArrowLeft,
@@ -42,6 +42,8 @@ interface ExportResult {
   success: boolean
   accepted: number
   skipped: number
+  rolesAssigned?: number
+  rolesFailed?: number
   users: AcceptedUser[]
 }
 
@@ -97,6 +99,7 @@ export function ModeratorExportPage() {
   const [adding, setAdding] = useState<string | null>(null)
 
   const [discordAction, setDiscordAction] = useState<"assign" | "remove" | null>(null)
+  const [discordPolling, setDiscordPolling] = useState(false)
   const [discordResult, setDiscordResult] = useState<DiscordRoleResult | null>(null)
   const [discordError, setDiscordError] = useState<string | null>(null)
 
@@ -139,7 +142,10 @@ export function ModeratorExportPage() {
       })
       setExportResult(result)
       if (result.accepted > 0) {
-        toast.success(`${result.accepted} users accepted${result.skipped > 0 ? ` (${result.skipped} skipped)` : ""}`)
+        const roleInfo = result.rolesAssigned !== undefined
+          ? `, ${result.rolesAssigned} roles assigned${result.rolesFailed ? ` (${result.rolesFailed} failed)` : ""}`
+          : ""
+        toast.success(`${result.accepted} users accepted${result.skipped > 0 ? ` (${result.skipped} skipped)` : ""}${roleInfo}`)
       } else {
         toast.info("No new users to accept.")
       }
@@ -216,15 +222,21 @@ export function ModeratorExportPage() {
 
   const handleDiscordRole = async (action: "assign" | "remove") => {
     setDiscordAction(action)
+    setDiscordPolling(true)
     setDiscordResult(null)
     setDiscordError(null)
     try {
-      const result = await callFunction<DiscordRoleResult>(DISCORD_ROLE_FUNCTION_ID, { action })
+      const executionId = await callFunctionAsync(DISCORD_ROLE_FUNCTION_ID, { action })
+      toast.info(`${action === "assign" ? "Assigning" : "Removing"} roles... this may take a few minutes for many users.`)
+
+      const result = await pollAndParseExecution<DiscordRoleResult>(DISCORD_ROLE_FUNCTION_ID, executionId, 5000)
       setDiscordResult(result)
+      setDiscordPolling(false)
       toast.success(`${action === "assign" ? "Assigned" : "Removed"}: ${result.assigned || 0} success, ${result.failed} failed`)
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Discord role action failed."
       setDiscordError(msg)
+      setDiscordPolling(false)
       toast.error(msg)
     } finally {
       setDiscordAction(null)
@@ -335,6 +347,14 @@ export function ModeratorExportPage() {
                 <span className="text-green-400 font-medium">{exportResult.accepted}</span> users accepted
                 {exportResult.skipped > 0 && (
                   <span className="text-white/40">, {exportResult.skipped} already labeled</span>
+                )}
+                {exportResult.rolesAssigned !== undefined && (
+                  <span className="ml-2">
+                    <span className="text-green-400">{exportResult.rolesAssigned}</span> roles assigned
+                    {exportResult.rolesFailed != null && exportResult.rolesFailed > 0 && (
+                      <span className="text-red-400">, {exportResult.rolesFailed} failed</span>
+                    )}
+                  </span>
                 )}
               </p>
               {exportResult.users.length > 0 && (
@@ -484,27 +504,27 @@ export function ModeratorExportPage() {
               variant="default"
               className="flex-1"
               onClick={() => handleDiscordRole("assign")}
-              disabled={discordAction !== null}
+              disabled={discordAction !== null || discordPolling}
             >
               {discordAction === "assign" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <CheckCircle2 className="h-4 w-4" />
               )}
-              Assign Role
+              {discordAction === "assign" ? "Processing..." : "Assign Role"}
             </Button>
             <Button
               variant="destructive"
               className="flex-1"
               onClick={() => handleDiscordRole("remove")}
-              disabled={discordAction !== null}
+              disabled={discordAction !== null || discordPolling}
             >
               {discordAction === "remove" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <XCircle className="h-4 w-4" />
               )}
-              Remove Role
+              {discordAction === "remove" ? "Processing..." : "Remove Role"}
             </Button>
           </div>
 
