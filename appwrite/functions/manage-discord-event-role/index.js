@@ -151,7 +151,7 @@ async function getEmbedState(databases) {
     );
     if (result.documents.length > 0) {
       const doc = result.documents[0];
-      const messageIds = doc.messageIds || (doc.messageId ? [doc.messageId] : []);
+      const messageIds = doc.messageId ? doc.messageId.split("|") : [];
       return { channelId: doc.channelId, messageIds, documentId: doc.$id };
     }
     return null;
@@ -253,8 +253,7 @@ async function refreshAcceptedList(databases, log) {
     if (embedState.documentId) {
       try {
         await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedState.documentId, {
-          messageId: newMessageIds[0] || "",
-          messageIds: newMessageIds,
+          messageId: newMessageIds.join("|"),
           lastUpdated: new Date().toISOString(),
         });
       } catch (e) {

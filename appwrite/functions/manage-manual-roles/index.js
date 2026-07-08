@@ -167,7 +167,7 @@ async function getEmbedState(databases) {
     );
     if (result.documents.length > 0) {
       const doc = result.documents[0];
-      const messageIds = doc.messageIds || (doc.messageId ? [doc.messageId] : []);
+      const messageIds = doc.messageId ? doc.messageId.split("|") : [];
       return { channelId: doc.channelId, messageIds, documentId: doc.$id };
     }
     return null;
@@ -208,7 +208,6 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
       try {
         await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedStateDocId, {
           messageId: "",
-          messageIds: [],
           lastUpdated: new Date().toISOString(),
         });
       } catch {}
@@ -262,8 +261,7 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
   if (embedStateDocId) {
     try {
       await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedStateDocId, {
-        messageId: newMessageIds[0] || "",
-        messageIds: newMessageIds,
+        messageId: newMessageIds.join("|"),
         lastUpdated: new Date().toISOString(),
       });
     } catch (e) {
@@ -500,7 +498,6 @@ module.exports = async function (context) {
             {
               channelId,
               messageId: "",
-              messageIds: [],
               createdAt: new Date().toISOString(),
               lastUpdated: new Date().toISOString(),
               createdBy: adminUsername,
