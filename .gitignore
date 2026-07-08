@@ -34,3 +34,5 @@ scripts/
 
 # Archives / backups
 *.tar.gz.worktrees/
+
+creds.txt

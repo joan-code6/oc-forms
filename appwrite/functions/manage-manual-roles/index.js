@@ -18,6 +18,38 @@ function getServerClient() {
   return client;
 }
 
+async function discordRequest(url, options, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let res;
+    try {
+      res = await fetch(url, options);
+    } catch (fetchErr) {
+      if (attempt < maxRetries) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      throw fetchErr;
+    }
+
+    if (res.status !== 429) return res;
+
+    let retryAfter = 1000;
+    try {
+      const cloned = res.clone();
+      const body = await cloned.json();
+      if (body.retry_after) {
+        retryAfter = Math.ceil(body.retry_after * 1000) + 100;
+      }
+    } catch {}
+
+    if (attempt < maxRetries) {
+      await new Promise((r) => setTimeout(r, retryAfter));
+    } else {
+      return res;
+    }
+  }
+}
+
 async function verifyAdmin(userId) {
   try {
     const client = getServerClient();
@@ -72,7 +104,7 @@ async function getDiscordIdForUser(users, userId) {
 
 async function sendDM(discordId, minecraftIGN) {
   try {
-    const dmRes = await fetch("https://discord.com/api/v10/users/@me/channels", {
+    const dmRes = await discordRequest("https://discord.com/api/v10/users/@me/channels", {
       method: "POST",
       headers: {
         Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
@@ -101,7 +133,7 @@ async function sendDM(discordId, minecraftIGN) {
       timestamp: new Date().toISOString(),
     };
 
-    const msgRes = await fetch(
+    const msgRes = await discordRequest(
       `https://discord.com/api/v10/channels/${dmChannel.id}/messages`,
       {
         method: "POST",
@@ -144,7 +176,8 @@ async function getEmbedState(databases) {
     );
     if (result.documents.length > 0) {
       const doc = result.documents[0];
-      return { channelId: doc.channelId, messageId: doc.messageId, documentId: doc.$id };
+      const messageIds = doc.messageIds || (doc.messageId ? [doc.messageId] : []);
+      return { channelId: doc.channelId, messageIds, documentId: doc.$id };
     }
     return null;
   } catch {
@@ -152,53 +185,129 @@ async function getEmbedState(databases) {
   }
 }
 
-async function updateEmbedInDiscord(embedState, acceptedUsers, log) {
-  if (!embedState) return;
+function chunkArray(arr, size) {
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
 
-  const userList = acceptedUsers
-    .map((u, i) => {
-      const ign = u.minecraftIGN || "N/A";
-      const tag = u.discordId ? `<@${u.discordId}>` : "";
-      return `${i + 1}. ${tag} — **${ign}**`;
-    })
-    .join("\n");
+async function deleteMessagesInChannel(channelId, messageIds, log) {
+  for (const mid of messageIds) {
+    try {
+      await fetch(
+        `https://discord.com/api/v10/channels/${channelId}/messages/${mid}`,
+        { method: "DELETE", headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` } }
+      );
+    } catch (e) {
+      log(`Failed to delete old message ${mid}: ${e.message}`);
+    }
+  }
+}
 
-  const description = userList.length > 4000
-    ? userList.substring(0, 4000) + "\n\n...and more"
-    : userList;
+async function postAcceptedListMessages(channelId, acceptedUsers, databases, embedStateDocId, log) {
+  const lines = acceptedUsers.map((u, i) => {
+    const tag = u.discordId ? `<@${u.discordId}>` : `\`${u.discordUsername || "Unknown"}\``;
+    return `${i + 1}. ${tag}`;
+  });
 
-  const embed = {
-    title: `Accepted Players (${acceptedUsers.length})`,
-    description: description || "No accepted players yet.",
-    color: 0x22c55e,
-    footer: {
-      text: `Last updated: ${new Date().toLocaleString("en-US", { timeZone: "UTC" })} UTC`,
-    },
-  };
+  if (lines.length === 0) {
+    if (embedStateDocId) {
+      try {
+        await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedStateDocId, {
+          messageIds: [],
+          lastUpdated: new Date().toISOString(),
+        });
+      } catch {}
+    }
+    return [];
+  }
 
-  const body = {
-    content: `Accepted players list (${acceptedUsers.length} total)`,
-    embeds: [embed],
-    allowed_mentions: { parse: [] },
-  };
+  const USERS_PER_PAGE = 30;
+  const chunks = chunkArray(lines, USERS_PER_PAGE);
+  const totalPages = chunks.length;
+  const newMessageIds = [];
 
+  for (let i = 0; i < chunks.length; i++) {
+    const header = totalPages > 1
+      ? `**Accepted Players** (${i + 1}/${totalPages})\n`
+      : `**Accepted Players**\n`;
+
+    const content = header + chunks[i].join("\n");
+
+    try {
+      const res = await fetch(
+        `https://discord.com/api/v10/channels/${channelId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: content.length > 2000 ? content.substring(0, 1997) + "..." : content,
+            allowed_mentions: { parse: ["users"] },
+          }),
+        }
+      );
+
+      if (res.ok) {
+        const msg = await res.json();
+        newMessageIds.push(msg.id);
+      } else {
+        log(`Failed to post accepted list page ${i + 1}: ${res.status}`);
+      }
+
+      if (i < chunks.length - 1) {
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    } catch (e) {
+      log(`Error posting accepted list page ${i + 1}: ${e.message}`);
+    }
+  }
+
+  if (embedStateDocId) {
+    try {
+      await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedStateDocId, {
+        messageIds: newMessageIds,
+        lastUpdated: new Date().toISOString(),
+      });
+    } catch (e) {
+      log(`Failed to update message IDs: ${e.message}`);
+    }
+  }
+
+  return newMessageIds;
+}
+
+async function postAcceptAnnouncement(channelId, discordId, minecraftIGN, log) {
   try {
+    const content = discordId
+      ? `**Accepted:** <@${discordId}>`
+      : `**Accepted:** \`${minecraftIGN || "N/A"}\``;
+
     const res = await fetch(
-      `https://discord.com/api/v10/channels/${embedState.channelId}/messages/${embedState.messageId}`,
+      `https://discord.com/api/v10/channels/${channelId}/messages`,
       {
-        method: "PATCH",
+        method: "POST",
         headers: {
           Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          content,
+          allowed_mentions: { parse: ["users"] },
+        }),
       }
     );
-    if (!res.ok) {
-      log(`Failed to update embed: ${res.status}`);
+    if (res.ok) {
+      log(`Posted accept announcement for ${minecraftIGN}`);
+    } else {
+      log(`Failed to post accept announcement: ${res.status}`);
     }
   } catch (e) {
-    log(`Error updating embed: ${e.message}`);
+    log(`Error posting accept announcement: ${e.message}`);
   }
 }
 
@@ -248,6 +357,7 @@ async function addAcceptedLabel(users, databases, userId, adminUsername, log) {
     discordId: app.discordId || "",
     minecraftIGN: app.minecraftIGN || "",
     discordUsername: app.discordUsername || "",
+    rating: app.rating || 0,
   };
 }
 
@@ -303,7 +413,7 @@ module.exports = async function (context) {
 
         if (DISCORD_EVENT_ROLE_ID && discordId) {
           try {
-            const roleRes = await fetch(
+            const roleRes = await discordRequest(
               `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}/roles/${DISCORD_EVENT_ROLE_ID}`,
               {
                 method: "PUT",
@@ -330,7 +440,7 @@ module.exports = async function (context) {
           log(`Could not resolve Discord ID for ${result.discordUsername || targetUserId}`);
         }
 
-        if (discordId && roleApplied && !result.alreadyAccepted) {
+        if (discordId && !result.alreadyAccepted) {
           dmResult = await sendDM(discordId, result.minecraftIGN);
           log(`DM sent to ${result.discordUsername}: ${dmResult.success ? "ok" : dmResult.error}`);
         }
@@ -351,7 +461,9 @@ module.exports = async function (context) {
         }
 
         const embedState = await getEmbedState(databases);
-        await updateEmbedInDiscord(embedState, await getAcceptedUsers(databases), log);
+        if (embedState && embedState.channelId && discordId) {
+          await postAcceptAnnouncement(embedState.channelId, discordId, result.minecraftIGN, log);
+        }
 
         return res.json({
           success: true,
@@ -376,102 +488,50 @@ module.exports = async function (context) {
         }
 
         const existingState = await getEmbedState(databases);
-        if (existingState) {
+        if (existingState && existingState.messageIds && existingState.messageIds.length > 0) {
           return res.json({
             success: false,
-            error: "Embed already exists. Delete it first before creating a new one.",
-            state: existingState,
+            error: "Accepted list already exists. Delete it first before creating a new one.",
+            state: { channelId: existingState.channelId, messageIds: existingState.messageIds },
           });
         }
 
         const acceptedUsers = await getAcceptedUsers(databases);
 
-        const userList = acceptedUsers
-          .map((u, i) => {
-            const ign = u.minecraftIGN || "N/A";
-            const tag = u.discordId ? `<@${u.discordId}>` : "";
-            return `${i + 1}. ${tag} — **${ign}**`;
-          })
-          .join("\n");
-
-        const description = userList.length > 4000
-          ? userList.substring(0, 4000) + "\n\n...and more"
-          : userList;
-
-        const embed = {
-          title: `Accepted Players (${acceptedUsers.length})`,
-          description: description || "No accepted players yet.",
-          color: 0x22c55e,
-          footer: {
-            text: `Last updated: ${new Date().toLocaleString("en-US", { timeZone: "UTC" })} UTC`,
-          },
-        };
-
-        const msgBody = {
-          content: `Accepted players list (${acceptedUsers.length} total)`,
-          embeds: [embed],
-          allowed_mentions: { parse: [] },
-        };
-
-        const discordRes = await fetch(
-          `https://discord.com/api/v10/channels/${channelId}/messages`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(msgBody),
-          }
-        );
-
-        if (!discordRes.ok) {
-          const resText = await discordRes.text();
-          return res.json({ success: false, error: `Discord API ${discordRes.status}: ${resText}` });
+        let stateDocId = existingState?.documentId;
+        if (!stateDocId) {
+          const stateDoc = await databases.createDocument(
+            DATABASE_ID,
+            ROLE_EMBED_STATE_COLLECTION_ID,
+            "unique()",
+            {
+              channelId,
+              messageIds: [],
+              createdAt: new Date().toISOString(),
+              lastUpdated: new Date().toISOString(),
+              createdBy: adminUsername,
+            }
+          );
+          stateDocId = stateDoc.$id;
         }
 
-        const msg = await discordRes.json();
+        const messageIds = await postAcceptedListMessages(channelId, acceptedUsers, databases, stateDocId, log);
 
-        await databases.createDocument(
-          DATABASE_ID,
-          ROLE_EMBED_STATE_COLLECTION_ID,
-          "unique()",
-          {
-            channelId,
-            messageId: msg.id,
-            createdAt: new Date().toISOString(),
-            lastUpdated: new Date().toISOString(),
-            createdBy: adminUsername,
-          }
-        );
-
-        log(`Embed created in channel ${channelId}, message ${msg.id}`);
+        log(`Accepted list created in channel ${channelId}, ${messageIds.length} messages`);
         return res.json({
           success: true,
           channelId,
-          messageId: msg.id,
+          messageIds,
         });
       }
 
       case "delete-embed": {
         const embedState = await getEmbedState(databases);
-        if (!embedState) {
-          return res.json({ success: false, error: "No embed to delete." });
+        if (!embedState || !embedState.messageIds || embedState.messageIds.length === 0) {
+          return res.json({ success: false, error: "No accepted list to delete." });
         }
 
-        try {
-          await fetch(
-            `https://discord.com/api/v10/channels/${embedState.channelId}/messages/${embedState.messageId}`,
-            {
-              method: "DELETE",
-              headers: {
-                Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-              },
-            }
-          );
-        } catch (e) {
-          log(`Failed to delete Discord message: ${e.message}`);
-        }
+        await deleteMessagesInChannel(embedState.channelId, embedState.messageIds, log);
 
         try {
           await databases.deleteDocument(
@@ -483,7 +543,7 @@ module.exports = async function (context) {
           log(`Failed to delete embed state document: ${e.message}`);
         }
 
-        log("Embed deleted");
+        log("Accepted list deleted");
         return res.json({ success: true });
       }
 
@@ -491,9 +551,9 @@ module.exports = async function (context) {
         const embedState = await getEmbedState(databases);
         return res.json({
           success: true,
-          exists: !!embedState,
+          exists: !!(embedState && embedState.channelId),
           channelId: embedState?.channelId || null,
-          messageId: embedState?.messageId || null,
+          messageIds: embedState?.messageIds || [],
         });
       }
 

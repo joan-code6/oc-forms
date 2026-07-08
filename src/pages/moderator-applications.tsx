@@ -75,7 +75,7 @@ interface EmbedStatus {
   success: boolean
   exists: boolean
   channelId: string | null
-  messageId: string | null
+  messageIds: string[]
 }
 
 function ratingColor(zone: string): string {
@@ -317,17 +317,17 @@ export function ModeratorApplicationsPage() {
         </div>
       )}
 
-      {/* Embed Section */}
+      {/* Accepted List Section */}
       <Card>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-white">Discord Embed</p>
+              <p className="text-sm font-medium text-white">Accepted Player List</p>
               {embedStatus === null ? (
                 <span className="text-xs text-white/30">—</span>
               ) : embedStatus.exists ? (
                 <span className="text-xs text-green-400 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Active in #{embedStatus.channelId}
+                  <CheckCircle2 className="h-3 w-3" /> Active in #{embedStatus.channelId} ({embedStatus.messageIds.length} messages)
                 </span>
               ) : (
                 <span className="text-xs text-white/30">Not configured</span>
@@ -341,7 +341,7 @@ export function ModeratorApplicationsPage() {
                 disabled={deletingEmbed}
               >
                 {deletingEmbed ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                Delete Embed
+                Delete List
               </Button>
             )}
           </div>
@@ -361,7 +361,7 @@ export function ModeratorApplicationsPage() {
                 disabled={creatingEmbed || !embedChannelId.trim()}
               >
                 {creatingEmbed ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                Create Embed
+                Create List
               </Button>
             </div>
           )}

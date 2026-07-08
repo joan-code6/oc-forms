@@ -265,7 +265,7 @@
         "commands": "npm install",
         "ignore": "node_modules\n.tmp",
         "path": "functions/export-accept-applications",
-        "timeout": 60,
+        "timeout": 900,
         "execute": [
             "users"
         ]
