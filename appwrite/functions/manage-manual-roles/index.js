@@ -207,6 +207,7 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
     if (embedStateDocId) {
       try {
         await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedStateDocId, {
+          messageId: "",
           messageIds: [],
           lastUpdated: new Date().toISOString(),
         });
@@ -261,6 +262,7 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
   if (embedStateDocId) {
     try {
       await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedStateDocId, {
+        messageId: newMessageIds[0] || "",
         messageIds: newMessageIds,
         lastUpdated: new Date().toISOString(),
       });
@@ -497,6 +499,7 @@ module.exports = async function (context) {
             "unique()",
             {
               channelId,
+              messageId: "",
               messageIds: [],
               createdAt: new Date().toISOString(),
               lastUpdated: new Date().toISOString(),

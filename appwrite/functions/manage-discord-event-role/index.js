@@ -253,6 +253,7 @@ async function refreshAcceptedList(databases, log) {
     if (embedState.documentId) {
       try {
         await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedState.documentId, {
+          messageId: newMessageIds[0] || "",
           messageIds: newMessageIds,
           lastUpdated: new Date().toISOString(),
         });
