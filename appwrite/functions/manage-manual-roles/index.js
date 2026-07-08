@@ -226,13 +226,10 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
 
   const USERS_PER_PAGE = 75;
   const chunks = chunkArray(lines, USERS_PER_PAGE);
-  const totalPages = chunks.length;
   const newMessageIds = [];
 
   for (let i = 0; i < chunks.length; i++) {
-    const header = totalPages > 1
-      ? `**Accepted Players** (${i + 1}/${totalPages})\n`
-      : `**Accepted Players**\n`;
+    const header = `**Accepted Players**\n`;
 
     const content = header + chunks[i].join("\n");
 
@@ -279,36 +276,6 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
   }
 
   return newMessageIds;
-}
-
-async function postAcceptAnnouncement(channelId, discordId, minecraftIGN, log) {
-  try {
-    const content = discordId
-      ? `**Accepted:** <@${discordId}>`
-      : `**Accepted:** \`${minecraftIGN || "N/A"}\``;
-
-    const res = await fetch(
-      `https://discord.com/api/v10/channels/${channelId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content,
-          allowed_mentions: { parse: ["users"] },
-        }),
-      }
-    );
-    if (res.ok) {
-      log(`Posted accept announcement for ${minecraftIGN}`);
-    } else {
-      log(`Failed to post accept announcement: ${res.status}`);
-    }
-  } catch (e) {
-    log(`Error posting accept announcement: ${e.message}`);
-  }
 }
 
 async function addAcceptedLabel(users, databases, userId, adminUsername, log) {
@@ -461,8 +428,10 @@ module.exports = async function (context) {
         }
 
         const embedState = await getEmbedState(databases);
-        if (embedState && embedState.channelId && discordId) {
-          await postAcceptAnnouncement(embedState.channelId, discordId, result.minecraftIGN, log);
+        if (embedState && embedState.channelId) {
+          await deleteMessagesInChannel(embedState.channelId, embedState.messageIds, log);
+          const acceptedUsers = await getAcceptedUsers(databases);
+          await postAcceptedListMessages(embedState.channelId, acceptedUsers, databases, embedState.documentId, log);
         }
 
         return res.json({

@@ -193,13 +193,10 @@ async function postAcceptedListMessages(channelId, acceptedUsers, log) {
 
   const USERS_PER_PAGE = 75;
   const chunks = chunkArray(lines, USERS_PER_PAGE);
-  const totalPages = chunks.length;
   const newMessageIds = [];
 
   for (let i = 0; i < chunks.length; i++) {
-    const header = totalPages > 1
-      ? `**Accepted Players** (${i + 1}/${totalPages})\n`
-      : `**Accepted Players**\n`;
+    const header = `**Accepted Players**\n`;
 
     const content = header + chunks[i].join("\n");
 
