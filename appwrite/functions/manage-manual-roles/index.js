@@ -206,7 +206,7 @@ async function deleteMessagesInChannel(channelId, messageIds, log) {
   }
 }
 
-async function postAcceptedListMessages(channelId, acceptedUsers, databases, embedStateDocId, log) {
+async function postAcceptedListMessages(channelId, acceptedUsers, databases, embedStateDocId, allowPings, log) {
   const lines = acceptedUsers.map((u, i) => {
     const tag = u.discordId ? `<@${u.discordId}>` : `\`${u.discordUsername || "Unknown"}\``;
     return `${i + 1}. ${tag}`;
@@ -230,7 +230,6 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
 
   for (let i = 0; i < chunks.length; i++) {
     const header = `**Accepted Players**\n`;
-
     const content = header + chunks[i].join("\n");
 
     try {
@@ -244,7 +243,7 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
           },
           body: JSON.stringify({
             content: content.length > 2000 ? content.substring(0, 1997) + "..." : content,
-            allowed_mentions: { parse: ["users"] },
+            allowed_mentions: { parse: allowPings ? ["users"] : [] },
           }),
         }
       );
@@ -276,6 +275,86 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
   }
 
   return newMessageIds;
+}
+
+async function appendToList(channelId, messageIds, newUserTag, acceptedCount, databases, embedStateDocId, log) {
+  const lastId = messageIds[messageIds.length - 1];
+  if (!lastId) return messageIds;
+
+  const newLine = `${acceptedCount}. ${newUserTag}`;
+
+  try {
+    const fetchRes = await fetch(
+      `https://discord.com/api/v10/channels/${channelId}/messages/${lastId}`,
+      { headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` } }
+    );
+
+    if (fetchRes.ok) {
+      const msg = await fetchRes.json();
+      const currentContent = msg.content || "";
+      const updatedContent = currentContent + "\n" + newLine;
+
+      if (updatedContent.length <= 1950) {
+        const patchRes = await fetch(
+          `https://discord.com/api/v10/channels/${channelId}/messages/${lastId}`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              content: updatedContent,
+              allowed_mentions: { parse: [] },
+            }),
+          }
+        );
+        if (patchRes.ok) {
+          log(`Edited message ${lastId} to append user #${acceptedCount}`);
+          return messageIds;
+        }
+      }
+    }
+  } catch (e) {
+    log(`Could not edit last message, posting new one: ${e.message}`);
+  }
+
+  try {
+    const postRes = await fetch(
+      `https://discord.com/api/v10/channels/${channelId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: `**Accepted Players**\n${newLine}`,
+          allowed_mentions: { parse: [] },
+        }),
+      }
+    );
+    if (postRes.ok) {
+      const newMsg = await postRes.json();
+      const updatedIds = [...messageIds, newMsg.id];
+      if (embedStateDocId) {
+        try {
+          await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedStateDocId, {
+            messageId: updatedIds.slice(0, 3).join("|"),
+            lastUpdated: new Date().toISOString(),
+          });
+        } catch {}
+      }
+      log(`Posted new list page for user #${acceptedCount}`);
+      return updatedIds;
+    } else {
+      log(`Failed to post new list message: ${postRes.status}`);
+    }
+  } catch (e) {
+    log(`Error posting new list message: ${e.message}`);
+  }
+
+  return messageIds;
 }
 
 async function addAcceptedLabel(users, databases, userId, adminUsername, log) {
@@ -428,10 +507,19 @@ module.exports = async function (context) {
         }
 
         const embedState = await getEmbedState(databases);
-        if (embedState && embedState.channelId) {
-          await deleteMessagesInChannel(embedState.channelId, embedState.messageIds, log);
+        if (embedState && embedState.channelId && embedState.messageIds.length > 0 && discordId) {
           const acceptedUsers = await getAcceptedUsers(databases);
-          await postAcceptedListMessages(embedState.channelId, acceptedUsers, databases, embedState.documentId, log);
+          const tag = `<@${discordId}>`;
+          const count = acceptedUsers.length;
+          await appendToList(
+            embedState.channelId,
+            embedState.messageIds,
+            tag,
+            count,
+            databases,
+            embedState.documentId,
+            log
+          );
         }
 
         return res.json({
@@ -446,6 +534,20 @@ module.exports = async function (context) {
             minecraftIGN: result.minecraftIGN,
           },
         });
+      }
+
+      case "refresh-list": {
+        const embedState = await getEmbedState(databases);
+        if (!embedState || !embedState.channelId) {
+          return res.json({ success: false, error: "No accepted list configured." });
+        }
+
+        await deleteMessagesInChannel(embedState.channelId, embedState.messageIds, log);
+        const acceptedUsers = await getAcceptedUsers(databases);
+        await postAcceptedListMessages(embedState.channelId, acceptedUsers, databases, embedState.documentId, false, log);
+
+        log(`Accepted list refreshed, ${acceptedUsers.length} users`);
+        return res.json({ success: true, userCount: acceptedUsers.length });
       }
 
       case "create-embed": {
@@ -484,7 +586,7 @@ module.exports = async function (context) {
           stateDocId = stateDoc.$id;
         }
 
-        const messageIds = await postAcceptedListMessages(channelId, acceptedUsers, databases, stateDocId, log);
+        const messageIds = await postAcceptedListMessages(channelId, acceptedUsers, databases, stateDocId, true, log);
 
         log(`Accepted list created in channel ${channelId}, ${messageIds.length} messages`);
         return res.json({

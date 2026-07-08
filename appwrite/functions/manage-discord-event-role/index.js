@@ -427,10 +427,6 @@ module.exports = async function (context) {
       log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${success} success, ${failed} failed so far (${Math.min(i + BATCH_SIZE, allDocs.length)}/${allDocs.length})`);
     }
 
-    if (action === "assign") {
-      await refreshAcceptedList(databases, log);
-    }
-
     log(`Discord role ${action}: ${success} success, ${failed} failed, DM: ${dmSuccess} sent, ${dmFailed} failed`);
     return res.json({ success: true, action, assigned: success, failed, dmSent: dmSuccess, dmFailed });
   } catch (e) {

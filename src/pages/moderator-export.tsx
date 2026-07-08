@@ -19,12 +19,14 @@ import {
   Search,
   CheckCircle2,
   XCircle,
+  RefreshCw,
 } from "lucide-react"
 
 const EXPORT_FUNCTION_ID = "export-accept-applications"
 const GET_ACCEPTED_FUNCTION_ID = "get-accepted-users"
 const MANAGE_LABEL_FUNCTION_ID = "manage-accepted-label"
 const DISCORD_ROLE_FUNCTION_ID = "manage-discord-event-role"
+const MANUAL_ROLES_FUNCTION_ID = "manage-manual-roles"
 const WHITELIST_FUNCTION_ID = "export-whitelist"
 
 interface AcceptedUser {
@@ -104,6 +106,20 @@ export function ModeratorExportPage() {
   const [discordError, setDiscordError] = useState<string | null>(null)
 
   const [downloading, setDownloading] = useState(false)
+
+  const [refreshingList, setRefreshingList] = useState(false)
+
+  const handleRefreshList = async () => {
+    setRefreshingList(true)
+    try {
+      const result = await callFunction<{ success: boolean; userCount: number }>(MANUAL_ROLES_FUNCTION_ID, { action: "refresh-list" })
+      toast.success(`List refreshed with ${result.userCount} users.`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Refresh failed.")
+    } finally {
+      setRefreshingList(false)
+    }
+  }
 
   const fetchAcceptedUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -498,6 +514,7 @@ export function ModeratorExportPage() {
           <p className="text-sm font-medium text-white">Discord Role</p>
           <p className="text-xs text-white/40">
             Assign or remove the event participant role in Discord for all accepted users.
+            Refresh the accepted player list in Discord after bulk operations.
           </p>
           <div className="flex gap-3">
             <Button
@@ -527,6 +544,15 @@ export function ModeratorExportPage() {
               {discordAction === "remove" ? "Processing..." : "Remove Role"}
             </Button>
           </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleRefreshList}
+            disabled={refreshingList}
+          >
+            {refreshingList ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Refresh Discord List
+          </Button>
 
           {discordError && (
             <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2 text-sm text-red-400">
