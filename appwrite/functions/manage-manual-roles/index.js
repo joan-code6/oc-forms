@@ -25,7 +25,7 @@ async function discordRequest(url, options, maxRetries = 3) {
       res = await fetch(url, options);
     } catch (fetchErr) {
       if (attempt < maxRetries) {
-        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, 1500));
         continue;
       }
       throw fetchErr;
@@ -33,17 +33,8 @@ async function discordRequest(url, options, maxRetries = 3) {
 
     if (res.status !== 429) return res;
 
-    let retryAfter = 1000;
-    try {
-      const cloned = res.clone();
-      const body = await cloned.json();
-      if (body.retry_after) {
-        retryAfter = Math.ceil(body.retry_after * 1000) + 100;
-      }
-    } catch {}
-
     if (attempt < maxRetries) {
-      await new Promise((r) => setTimeout(r, retryAfter));
+      await new Promise((r) => setTimeout(r, 1500));
     } else {
       return res;
     }
@@ -561,7 +552,9 @@ module.exports = async function (context) {
         return res.json({ success: false, error: `Unknown action: ${action}` }, 400);
     }
   } catch (e) {
-    error("Manage manual roles failed:", e.message);
-    return res.json({ success: false, error: "Operation failed." }, 500);
+    try {
+      error("Manage manual roles failed:", String(e?.message || e));
+    } catch (_) {}
+    return res.json({ success: false, error: "Operation failed.", detail: String(e?.message || e) }, 500);
   }
 };

@@ -30,17 +30,8 @@ async function discordRequest(url, options, maxRetries = 3) {
 
     if (res.status !== 429) return res;
 
-    let retryAfter = 1000;
-    try {
-      const cloned = res.clone();
-      const body = await cloned.json();
-      if (body.retry_after) {
-        retryAfter = Math.ceil(body.retry_after * 1000) + 100;
-      }
-    } catch {}
-
     if (attempt < maxRetries) {
-      await new Promise((r) => setTimeout(r, retryAfter));
+      await new Promise((r) => setTimeout(r, 1500));
     } else {
       return res;
     }
@@ -430,7 +421,9 @@ module.exports = async function (context) {
     log(`Discord role ${action}: ${success} success, ${failed} failed, DM: ${dmSuccess} sent, ${dmFailed} failed`);
     return res.json({ success: true, action, assigned: success, failed, dmSent: dmSuccess, dmFailed });
   } catch (e) {
-    error("Discord role management failed:", e.message);
-    return res.json({ success: false, error: "Failed to manage Discord roles." }, 500);
+    try {
+      error("Discord role management failed:", String(e?.message || e));
+    } catch (_) {}
+    return res.json({ success: false, error: "Failed to manage Discord roles.", detail: String(e?.message || e) }, 500);
   }
 };
