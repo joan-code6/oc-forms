@@ -25,7 +25,7 @@ async function discordRequest(url, options, maxRetries = 3) {
       res = await fetch(url, options);
     } catch (fetchErr) {
       if (attempt < maxRetries) {
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
         continue;
       }
       throw fetchErr;
@@ -33,8 +33,17 @@ async function discordRequest(url, options, maxRetries = 3) {
 
     if (res.status !== 429) return res;
 
+    let retryAfter = 1500;
+    const headerVal = res.headers.get("Retry-After");
+    if (headerVal) {
+      const seconds = parseFloat(headerVal);
+      if (!isNaN(seconds) && seconds > 0) {
+        retryAfter = Math.ceil(seconds * 1000) + 200;
+      }
+    }
+
     if (attempt < maxRetries) {
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, retryAfter));
     } else {
       return res;
     }
@@ -215,7 +224,7 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
     return [];
   }
 
-  const USERS_PER_PAGE = 30;
+  const USERS_PER_PAGE = 75;
   const chunks = chunkArray(lines, USERS_PER_PAGE);
   const totalPages = chunks.length;
   const newMessageIds = [];
@@ -261,7 +270,7 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
   if (embedStateDocId) {
     try {
       await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedStateDocId, {
-        messageId: newMessageIds.join("|"),
+        messageId: newMessageIds.slice(0, 3).join("|"),
         lastUpdated: new Date().toISOString(),
       });
     } catch (e) {

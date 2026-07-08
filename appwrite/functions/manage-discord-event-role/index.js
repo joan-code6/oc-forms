@@ -13,7 +13,8 @@ const ADMIN_ROLE_ID          = process.env.ADMIN_ROLE_ID;
 const DISCORD_EVENT_ROLE_ID  = process.env.DISCORD_Underground_Event_Participant_ROLE_ID;
 
 const BATCH_SIZE = 45;
-const BATCH_DELAY_MS = 1100;
+const MICRO_BATCH_SIZE = 5;
+const MICRO_BATCH_DELAY_MS = 600;
 
 async function discordRequest(url, options, maxRetries = 3) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -30,8 +31,17 @@ async function discordRequest(url, options, maxRetries = 3) {
 
     if (res.status !== 429) return res;
 
+    let retryAfter = 1500;
+    const headerVal = res.headers.get("Retry-After");
+    if (headerVal) {
+      const seconds = parseFloat(headerVal);
+      if (!isNaN(seconds) && seconds > 0) {
+        retryAfter = Math.ceil(seconds * 1000) + 200;
+      }
+    }
+
     if (attempt < maxRetries) {
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, retryAfter));
     } else {
       return res;
     }
@@ -181,7 +191,7 @@ async function postAcceptedListMessages(channelId, acceptedUsers, log) {
 
   if (lines.length === 0) return [];
 
-  const USERS_PER_PAGE = 30;
+  const USERS_PER_PAGE = 75;
   const chunks = chunkArray(lines, USERS_PER_PAGE);
   const totalPages = chunks.length;
   const newMessageIds = [];
@@ -253,7 +263,7 @@ async function refreshAcceptedList(databases, log) {
     if (embedState.documentId) {
       try {
         await databases.updateDocument(DATABASE_ID, ROLE_EMBED_STATE_COLLECTION_ID, embedState.documentId, {
-          messageId: newMessageIds.join("|"),
+          messageId: newMessageIds.slice(0, 3).join("|"),
           lastUpdated: new Date().toISOString(),
         });
       } catch (e) {
@@ -401,12 +411,18 @@ module.exports = async function (context) {
     let isFirstBatch = true;
     for (let i = 0; i < allDocs.length; i += BATCH_SIZE) {
       if (!isFirstBatch) {
-        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+        await new Promise((r) => setTimeout(r, 2000));
       }
       isFirstBatch = false;
       const batch = allDocs.slice(i, i + BATCH_SIZE);
       try {
-        await processBatch(batch);
+        for (let j = 0; j < batch.length; j += MICRO_BATCH_SIZE) {
+          const micro = batch.slice(j, j + MICRO_BATCH_SIZE);
+          await processBatch(micro);
+          if (j + MICRO_BATCH_SIZE < batch.length) {
+            await new Promise((r) => setTimeout(r, MICRO_BATCH_DELAY_MS));
+          }
+        }
       } catch (e) {
         log(`Batch ${Math.floor(i / BATCH_SIZE) + 1} crashed: ${e.message}`);
         failed += batch.length;
