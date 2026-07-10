@@ -108,7 +108,7 @@ module.exports = async function (context) {
       );
       if (memberRes.ok) {
         const member = await memberRes.json();
-        discordJoinDate = member.joined_at || "";
+        discordJoinDate = (member.joined_at || "").substring(0, 30);
       }
     }
   } catch {
