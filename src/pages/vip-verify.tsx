@@ -217,7 +217,7 @@ export function VipVerifyPage() {
                 <div>
                   <p className="text-sm font-medium text-green-400">VIP Verified</p>
                   <p className="text-xs text-white/50">
-                    Logged in as {discordUsername || user.name}
+                    Logged in as {discordUsername || user?.name}
                   </p>
                 </div>
               </div>
