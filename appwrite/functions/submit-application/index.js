@@ -77,7 +77,7 @@ module.exports = async function (context) {
   let discordUsername = "";
   let discordEmail = "";
   let discordId = "";
-  let discordJoinDate = null;
+  let discordJoinDate = "";
 
   try {
     const client = getServerClient();
@@ -108,7 +108,7 @@ module.exports = async function (context) {
       );
       if (memberRes.ok) {
         const member = await memberRes.json();
-        discordJoinDate = member.joined_at || null;
+        discordJoinDate = member.joined_at || "";
       }
     }
   } catch {
