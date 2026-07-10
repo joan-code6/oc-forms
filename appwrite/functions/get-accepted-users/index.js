@@ -80,7 +80,15 @@ module.exports = async function (context) {
       [Query.limit(10000)]
     );
 
-    const users = result.documents.map((doc) => ({
+    const seen = new Map();
+    for (const doc of result.documents) {
+      const existing = seen.get(doc.userId);
+      if (!existing || doc.$createdAt >= existing.$createdAt) {
+        seen.set(doc.userId, doc);
+      }
+    }
+
+    const users = Array.from(seen.values()).map((doc) => ({
       id: doc.$id,
       userId: doc.userId,
       discordUsername: doc.discordUsername || "",

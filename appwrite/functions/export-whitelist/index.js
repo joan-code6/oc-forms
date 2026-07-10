@@ -81,7 +81,15 @@ module.exports = async function (context) {
       [Query.limit(10000)]
     );
 
-    const names = result.documents
+    const seen = new Map();
+    for (const doc of result.documents) {
+      const existing = seen.get(doc.userId);
+      if (!existing || doc.$createdAt >= existing.$createdAt) {
+        seen.set(doc.userId, doc);
+      }
+    }
+
+    const names = Array.from(seen.values())
       .map((doc) => doc.minecraftIGN)
       .filter((name) => name && name.trim())
       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));

@@ -180,6 +180,7 @@ module.exports = async function (context) {
             rating: app.rating || 0,
             assignedAt: new Date().toISOString(),
             assignedBy: adminCheck.discordUsername,
+            dmSent: false,
           }
         );
 

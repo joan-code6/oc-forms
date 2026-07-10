@@ -94,6 +94,7 @@ async function addLabel(users, databases, userId) {
       rating: app.rating || 0,
       assignedAt: new Date().toISOString(),
       assignedBy: "manual",
+      dmSent: false,
     }
   );
 

@@ -184,14 +184,21 @@ async function deleteMessagesInChannel(channelId, messageIds, log) {
 }
 
 async function postAcceptedListMessages(channelId, acceptedUsers, log) {
-  const lines = acceptedUsers.map((u, i) => {
-    const tag = u.discordId ? `<@${u.discordId}>` : `\`${u.discordUsername || "Unknown"}\``;
-    return `${i + 1}. ${tag}`;
-  });
+  const seen = new Set();
+  const lines = acceptedUsers
+    .filter((u) => {
+      if (seen.has(u.userId)) return false;
+      seen.add(u.userId);
+      return true;
+    })
+    .map((u, i) => {
+      const name = u.discordUsername || u.minecraftIGN || "Unknown";
+      return `${i + 1}. ${name}`;
+    });
 
   if (lines.length === 0) return [];
 
-  const USERS_PER_PAGE = 75;
+  const USERS_PER_PAGE = 50;
   const chunks = chunkArray(lines, USERS_PER_PAGE);
   const newMessageIds = [];
 

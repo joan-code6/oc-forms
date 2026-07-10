@@ -160,7 +160,14 @@ async function getAcceptedUsers(databases) {
       ACCEPTED_EVENT_COLLECTION_ID,
       [Query.limit(10000), Query.orderAsc("minecraftIGN")]
     );
-    return result.documents;
+    const seen = new Map();
+    for (const doc of result.documents) {
+      const existing = seen.get(doc.userId);
+      if (!existing || doc.$createdAt >= existing.$createdAt) {
+        seen.set(doc.userId, doc);
+      }
+    }
+    return Array.from(seen.values());
   } catch {
     return [];
   }
@@ -207,10 +214,17 @@ async function deleteMessagesInChannel(channelId, messageIds, log) {
 }
 
 async function postAcceptedListMessages(channelId, acceptedUsers, databases, embedStateDocId, allowPings, log) {
-  const lines = acceptedUsers.map((u, i) => {
-    const tag = u.discordId ? `<@${u.discordId}>` : `\`${u.discordUsername || "Unknown"}\``;
-    return `${i + 1}. ${tag}`;
-  });
+  const seen = new Set();
+  const lines = acceptedUsers
+    .filter((u) => {
+      if (seen.has(u.userId)) return false;
+      seen.add(u.userId);
+      return true;
+    })
+    .map((u, i) => {
+      const name = u.discordUsername || u.minecraftIGN || "Unknown";
+      return `${i + 1}. ${name}`;
+    });
 
   if (lines.length === 0) {
     if (embedStateDocId) {
@@ -224,7 +238,7 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
     return [];
   }
 
-  const USERS_PER_PAGE = 75;
+  const USERS_PER_PAGE = 50;
   const chunks = chunkArray(lines, USERS_PER_PAGE);
   const newMessageIds = [];
 
@@ -277,11 +291,11 @@ async function postAcceptedListMessages(channelId, acceptedUsers, databases, emb
   return newMessageIds;
 }
 
-async function appendToList(channelId, messageIds, newUserTag, acceptedCount, databases, embedStateDocId, log) {
+async function appendToList(channelId, messageIds, username, acceptedCount, databases, embedStateDocId, log) {
   const lastId = messageIds[messageIds.length - 1];
   if (!lastId) return messageIds;
 
-  const newLine = `${acceptedCount}. ${newUserTag}`;
+  const newLine = `${acceptedCount}. ${username}`;
 
   try {
     const fetchRes = await fetch(
@@ -509,12 +523,12 @@ module.exports = async function (context) {
         const embedState = await getEmbedState(databases);
         if (embedState && embedState.channelId && embedState.messageIds.length > 0 && discordId) {
           const acceptedUsers = await getAcceptedUsers(databases);
-          const tag = `<@${discordId}>`;
+          const username = result.discordUsername || result.minecraftIGN || "Unknown";
           const count = acceptedUsers.length;
           await appendToList(
             embedState.channelId,
             embedState.messageIds,
-            tag,
+            username,
             count,
             databases,
             embedState.documentId,
@@ -625,6 +639,62 @@ module.exports = async function (context) {
           exists: !!(embedState && embedState.channelId),
           channelId: embedState?.channelId || null,
           messageIds: embedState?.messageIds || [],
+        });
+      }
+
+      case "migrate": {
+        let allDocs = [];
+        let offset = 0;
+        const pageSize = 1000;
+        while (true) {
+          const page = await databases.listDocuments(
+            DATABASE_ID,
+            ACCEPTED_EVENT_COLLECTION_ID,
+            [Query.limit(pageSize), Query.offset(offset), Query.orderAsc("$id")]
+          );
+          allDocs = allDocs.concat(page.documents);
+          if (page.documents.length < pageSize) break;
+          offset += pageSize;
+        }
+
+        const seen = new Map();
+        const duplicates = [];
+        let backfilled = 0;
+
+        for (const doc of allDocs) {
+          const existing = seen.get(doc.userId);
+          if (existing) {
+            duplicates.push(doc);
+          } else {
+            seen.set(doc.userId, doc);
+          }
+        }
+
+        for (const dup of duplicates) {
+          try {
+            await databases.deleteDocument(DATABASE_ID, ACCEPTED_EVENT_COLLECTION_ID, dup.$id);
+          } catch (e) {
+            log(`Failed to delete duplicate ${dup.$id}: ${e.message}`);
+          }
+        }
+
+        for (const doc of seen.values()) {
+          if (doc.dmSent === undefined || doc.dmSent === null) {
+            try {
+              await databases.updateDocument(DATABASE_ID, ACCEPTED_EVENT_COLLECTION_ID, doc.$id, { dmSent: false });
+              backfilled++;
+            } catch (e) {
+              log(`Failed to backfill dmSent for ${doc.$id}: ${e.message}`);
+            }
+          }
+        }
+
+        log(`Migration: removed ${duplicates.length} duplicates, backfilled dmSent for ${backfilled} docs`);
+        return res.json({
+          success: true,
+          duplicatesRemoved: duplicates.length,
+          dmSentBackfilled: backfilled,
+          totalUnique: seen.size,
         });
       }
 
