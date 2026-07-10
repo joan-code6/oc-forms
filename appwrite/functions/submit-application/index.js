@@ -8,6 +8,7 @@ const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_COLLECTION_ID;
 const SETTINGS_COLLECTION_ID = process.env.APPWRITE_SETTINGS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID  = process.env.DISCORD_GUILD_ID;
+const DISCORD_VIP_ROLE_ID = process.env.DISCORD_VIP_ROLE_ID;
 
 const QUESTION_TEXT = {
   q1: "Do you have a working microphone?",
@@ -205,6 +206,51 @@ module.exports = async function (context) {
     );
 
     log(`Application submitted by ${discordUsername} (IGN: ${ign}), docId: ${doc.$id}`);
+
+    // VIP mode notification: check if VIP mode is enabled and user has VIP role
+    try {
+      const settings = await databases.getDocument(
+        DATABASE_ID,
+        SETTINGS_COLLECTION_ID,
+        "global"
+      );
+      if (settings.vipEnabled && settings.vipChannelId && DISCORD_VIP_ROLE_ID) {
+        const memberRes = await fetch(
+          `https://discord.com/api/v10/guilds/${DISCORD_GUILD_ID}/members/${discordId}`,
+          { headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" } }
+        );
+        if (memberRes.ok) {
+          const member = await memberRes.json();
+          if (member.roles?.includes(DISCORD_VIP_ROLE_ID)) {
+            const embed = {
+              title: "New VIP Application",
+              description: `A VIP member has submitted a new application.`,
+              color: 0xf59e0b,
+              fields: [
+                { name: "Discord", value: discordUsername || "Unknown", inline: true },
+                { name: "Minecraft IGN", value: ign, inline: true },
+              ],
+              footer: { text: "OutCraft Applications" },
+              timestamp: new Date().toISOString(),
+            };
+            await fetch(
+              `https://discord.com/api/v10/channels/${settings.vipChannelId}/messages`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ embeds: [embed] }),
+              }
+            );
+            log(`VIP notification sent for ${discordUsername} to channel ${settings.vipChannelId}`);
+          }
+        }
+      }
+    } catch (vipErr) {
+      log("VIP notification check failed (non-critical):", vipErr.message);
+    }
 
     return res.json({ success: true, documentId: doc.$id });
   } catch (e) {

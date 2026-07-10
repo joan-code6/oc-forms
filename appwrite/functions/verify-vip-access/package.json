@@ -1,0 +1,9 @@
+{
+  "name": "verify-vip-access",
+  "version": "1.0.0",
+  "description": "Verifies that the authenticated user has the VIP Discord role.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

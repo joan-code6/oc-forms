@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,8 @@ const MANAGE_LABEL_FUNCTION_ID = "manage-accepted-label"
 const DISCORD_ROLE_FUNCTION_ID = "manage-discord-event-role"
 const MANUAL_ROLES_FUNCTION_ID = "manage-manual-roles"
 const WHITELIST_FUNCTION_ID = "export-whitelist"
+const GET_SETTINGS_FUNCTION_ID = "get-app-settings"
+const UPDATE_SETTINGS_FUNCTION_ID = "update-app-settings"
 
 interface AcceptedUser {
   id: string
@@ -109,6 +111,11 @@ export function ModeratorExportPage() {
 
   const [refreshingList, setRefreshingList] = useState(false)
 
+  const [vipEnabled, setVipEnabled] = useState(false)
+  const [vipChannelId, setVipChannelId] = useState("")
+  const [vipSettingsLoading, setVipSettingsLoading] = useState(true)
+  const [vipSaving, setVipSaving] = useState(false)
+
   const handleRefreshList = async () => {
     setRefreshingList(true)
     try {
@@ -118,6 +125,44 @@ export function ModeratorExportPage() {
       toast.error(e instanceof Error ? e.message : "Refresh failed.")
     } finally {
       setRefreshingList(false)
+    }
+  }
+
+  const fetchVipSettings = useCallback(async () => {
+    try {
+      const result = await callFunction<{ vipEnabled?: boolean; vipChannelId?: string }>(GET_SETTINGS_FUNCTION_ID)
+      setVipEnabled(result.vipEnabled || false)
+      setVipChannelId(result.vipChannelId || "")
+    } catch {
+      // ignore
+    } finally {
+      setVipSettingsLoading(false)
+    }
+  }, [])
+
+  const handleVipToggle = async (enabled: boolean) => {
+    setVipEnabled(enabled)
+    setVipSaving(true)
+    try {
+      await callFunction(UPDATE_SETTINGS_FUNCTION_ID, { vipEnabled: enabled })
+      toast.success(`VIP mode ${enabled ? "enabled" : "disabled"}.`)
+    } catch (e) {
+      setVipEnabled(!enabled)
+      toast.error(e instanceof Error ? e.message : "Failed to update VIP settings.")
+    } finally {
+      setVipSaving(false)
+    }
+  }
+
+  const handleVipChannelSave = async () => {
+    setVipSaving(true)
+    try {
+      await callFunction(UPDATE_SETTINGS_FUNCTION_ID, { vipChannelId: vipChannelId.trim() })
+      toast.success("VIP channel saved.")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save VIP channel.")
+    } finally {
+      setVipSaving(false)
     }
   }
 
@@ -133,6 +178,10 @@ export function ModeratorExportPage() {
       setLoadingUsers(false)
     }
   }, [])
+
+  useEffect(() => {
+    fetchVipSettings()
+  }, [fetchVipSettings])
 
   const handleExport = async () => {
     const max = parseInt(maxPlayers, 10)
@@ -582,6 +631,72 @@ export function ModeratorExportPage() {
                 </div>
               )}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Section 3.5: VIP Mode */}
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          <p className="text-sm font-medium text-white">VIP Mode</p>
+          <p className="text-xs text-white/40">
+            When enabled, new applications from VIP members automatically send a notification
+            to the configured Discord channel. VIP members can register at{" "}
+            <code className="text-brand/80">/vip/verify</code>.
+          </p>
+
+          {vipSettingsLoading ? (
+            <div className="h-20 animate-pulse rounded bg-white/5" />
+          ) : (
+            <>
+              <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div>
+                  <p className="text-sm text-white">VIP Mode</p>
+                  <p className="text-xs text-white/40">
+                    {vipEnabled ? "VIP notifications are active" : "VIP notifications are disabled"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={vipEnabled}
+                  disabled={vipSaving}
+                  onClick={() => handleVipToggle(!vipEnabled)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none ${
+                    vipEnabled ? "bg-brand" : "bg-white/10"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                      vipEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs text-white/50">VIP Notification Channel ID</label>
+                <div className="flex gap-2">
+                  <Input
+                    className="flex-1"
+                    placeholder="Discord channel ID"
+                    value={vipChannelId}
+                    onChange={(e) => setVipChannelId(e.target.value)}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleVipChannelSave}
+                    disabled={vipSaving}
+                  >
+                    {vipSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                  </Button>
+                </div>
+                <p className="text-xs text-white/25">
+                  Right-click a Discord channel and select "Copy ID" (Developer Mode must be enabled).
+                </p>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

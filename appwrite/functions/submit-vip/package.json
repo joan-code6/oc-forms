@@ -1,0 +1,9 @@
+{
+  "name": "submit-vip",
+  "version": "1.0.0",
+  "description": "Verifies VIP role and adds the user to the accepted event collection for whitelist export.",
+  "main": "index.js",
+  "dependencies": {
+    "node-appwrite": "^13.0.0"
+  }
+}

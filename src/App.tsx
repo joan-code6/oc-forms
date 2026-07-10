@@ -24,6 +24,7 @@ import { ModeratorExportPage } from "@/pages/moderator-export"
 import { ModeratorApplicationsPage } from "@/pages/moderator-applications"
 import { ModeratorStatisticsPage } from "@/pages/moderator-statistics"
 import { DebugPage } from "@/pages/debug"
+import { VipVerifyPage } from "@/pages/vip-verify"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,6 +71,7 @@ function AppLayout() {
             <Route path="/preview-images" element={<PreviewImagesPage />} />
             <Route path="/invites" element={<InviteDashboardPage />} />
             <Route path="/invite/:code" element={<InviteRedeemPage />} />
+            <Route path="/vip/verify" element={<VipVerifyPage />} />
             <Route path="/debug" element={<DebugPage />} />
           </Routes>
         </main>

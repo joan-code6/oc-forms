@@ -347,5 +347,31 @@
         "execute": [
             "users"
         ]
+    },
+    {
+        "$id": "verify-vip-access",
+        "name": "Verify VIP Access",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/verify-vip-access",
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
+    },
+    {
+        "$id": "submit-vip",
+        "name": "Submit VIP",
+        "runtime": "node-25",
+        "entrypoint": "index.js",
+        "commands": "npm install",
+        "ignore": "node_modules\n.tmp",
+        "path": "functions/submit-vip",
+        "timeout": 15,
+        "execute": [
+            "users"
+        ]
     }
 ]

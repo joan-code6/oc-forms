@@ -116,6 +116,12 @@ module.exports = async function (context) {
         updateData.conflictThreshold = val;
       }
     }
+    if (typeof body.vipEnabled === "boolean") {
+      updateData.vipEnabled = body.vipEnabled;
+    }
+    if (typeof body.vipChannelId === "string") {
+      updateData.vipChannelId = body.vipChannelId;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return res.json({ error: "No valid settings to update." }, 400);

@@ -86,6 +86,8 @@ module.exports = async function (context) {
         appsPaused: settings.appsPaused || false,
         doubleReviewEnabled: settings.doubleReviewEnabled || false,
         conflictThreshold: typeof settings.conflictThreshold === "number" ? settings.conflictThreshold : 30,
+        vipEnabled: settings.vipEnabled || false,
+        vipChannelId: settings.vipChannelId || "",
       });
     }
 
