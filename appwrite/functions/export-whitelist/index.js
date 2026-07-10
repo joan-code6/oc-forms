@@ -5,7 +5,7 @@ const PROJECT_ID        = process.env.APPWRITE_PROJECT_ID;
 const API_KEY           = process.env.APPWRITE_API_KEY;
 const DATABASE_ID       = process.env.APPWRITE_DATABASE_ID;
 const ACCEPTED_EVENT_COLLECTION_ID = process.env.APPWRITE_ACCEPTED_EVENT_COLLECTION_ID;
-const APPLICATIONS_COLLECTION_ID = process.env.APPWRITE_APPLICATIONS_COLLECTION_ID;
+const VIP_USERS_COLLECTION_ID = process.env.APPWRITE_VIP_USERS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN      = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID       = process.env.DISCORD_GUILD_ID;
 const DISCORD_STAFF_ROLE_ID  = process.env.DISCORD_STAFF_ROLE_ID;
@@ -89,13 +89,36 @@ module.exports = async function (context) {
       }
     }
 
-    const names = Array.from(seen.values())
-      .map((doc) => doc.minecraftIGN)
-      .filter((name) => name && name.trim())
-      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    const names = new Set();
+    for (const doc of seen.values()) {
+      if (doc.minecraftIGN && doc.minecraftIGN.trim()) {
+        names.add(doc.minecraftIGN.trim());
+      }
+    }
 
-    log(`Whitelist export: ${names.length} names`);
-    return res.json({ success: true, names, total: names.length });
+    if (VIP_USERS_COLLECTION_ID) {
+      try {
+        const vipResult = await databases.listDocuments(
+          DATABASE_ID,
+          VIP_USERS_COLLECTION_ID,
+          [Query.limit(10000)]
+        );
+        for (const doc of vipResult.documents) {
+          if (doc.minecraftIGN && doc.minecraftIGN.trim()) {
+            names.add(doc.minecraftIGN.trim());
+          }
+        }
+      } catch (vipErr) {
+        log("Failed to read VIP users (non-critical):", vipErr.message);
+      }
+    }
+
+    const sortedNames = Array.from(names).sort((a, b) =>
+      a.toLowerCase().localeCompare(b.toLowerCase())
+    );
+
+    log(`Whitelist export: ${sortedNames.length} names`);
+    return res.json({ success: true, names: sortedNames, total: sortedNames.length });
   } catch (e) {
     error("Whitelist export failed:", e.message);
     return res.json({ success: false, error: "Failed to export whitelist." }, 500);
