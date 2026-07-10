@@ -426,6 +426,69 @@ module.exports = async function (context) {
 
   const userId = req.headers?.["x-appwrite-user-id"];
   if (!userId) {
+    let body;
+    try {
+      body = JSON.parse(req.body || "{}");
+    } catch {
+      return res.json({ success: false, error: "Invalid JSON payload." }, 400);
+    }
+    if (body.action === "migrate") {
+      try {
+        const client = getServerClient();
+        const databases = new Databases(client);
+        let allDocs = [];
+        let offset = 0;
+        const pageSize = 1000;
+        while (true) {
+          const page = await databases.listDocuments(
+            DATABASE_ID,
+            ACCEPTED_EVENT_COLLECTION_ID,
+            [Query.limit(pageSize), Query.offset(offset), Query.orderAsc("$id")]
+          );
+          allDocs = allDocs.concat(page.documents);
+          if (page.documents.length < pageSize) break;
+          offset += pageSize;
+        }
+        const seen = new Map();
+        const duplicates = [];
+        let backfilled = 0;
+        for (const doc of allDocs) {
+          const existing = seen.get(doc.userId);
+          if (existing) {
+            duplicates.push(doc);
+          } else {
+            seen.set(doc.userId, doc);
+          }
+        }
+        for (const dup of duplicates) {
+          try {
+            await databases.deleteDocument(DATABASE_ID, ACCEPTED_EVENT_COLLECTION_ID, dup.$id);
+          } catch (e) {
+            log(`Failed to delete duplicate ${dup.$id}: ${e.message}`);
+          }
+        }
+        for (const doc of seen.values()) {
+          if (doc.dmSent === undefined || doc.dmSent === null) {
+            try {
+              await databases.updateDocument(DATABASE_ID, ACCEPTED_EVENT_COLLECTION_ID, doc.$id, { dmSent: false });
+              backfilled++;
+            } catch (e) {
+              log(`Failed to backfill dmSent for ${doc.$id}: ${e.message}`);
+            }
+          }
+        }
+        log(`Migration (API key): removed ${duplicates.length} duplicates, backfilled dmSent for ${backfilled} docs`);
+        return res.json({
+          success: true,
+          duplicatesRemoved: duplicates.length,
+          dmSentBackfilled: backfilled,
+          totalUnique: seen.size,
+        });
+      } catch (e) {
+        try { error("Migration failed:", String(e?.message || e)); } catch (_) {}
+        return res.json({ success: false, error: "Migration failed.", detail: String(e?.message || e) }, 500);
+      }
+    }
     return res.json({ success: false, error: "Unauthorized." }, 401);
   }
 
