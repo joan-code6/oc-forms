@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,9 @@ export function VipVerifyPage() {
     }
   })
 
+  const loginAttempted = useRef(false)
+  const verifyStarted = useRef(false)
+
   const { data: minecraftData } = useMinecraftValidation(minecraftIGN)
   const isMCValid = minecraftData?.success === true
   const isReady = vipVerified && isMCValid && minecraftIGN.trim().length >= 3
@@ -58,14 +61,22 @@ export function VipVerifyPage() {
   }, [])
 
   useEffect(() => {
-    if (!user || verifying || vipVerified || vipDenied) return
+    if (authLoading) return
 
-    let cancelled = false
+    if (!user) {
+      if (!loginAttempted.current) {
+        loginAttempted.current = true
+        loginWithDiscord()
+      }
+      return
+    }
+
+    if (verifyStarted.current) return
+    verifyStarted.current = true
     setVerifying(true)
 
     callFunction<VerifyVipResult>(VERIFY_VIP_FUNCTION_ID)
       .then((result) => {
-        if (cancelled) return
         setVerifying(false)
         if (result.allowed) {
           setVipVerified(true)
@@ -77,13 +88,10 @@ export function VipVerifyPage() {
         }
       })
       .catch(() => {
-        if (cancelled) return
         setVerifying(false)
         setVipDenied(true)
       })
-
-    return () => { cancelled = true }
-  }, [user, verifying, vipVerified, vipDenied])
+  }, [user, authLoading, loginWithDiscord])
 
   const handleSubmit = useCallback(async () => {
     if (!isReady) return
