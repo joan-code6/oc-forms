@@ -5,6 +5,7 @@ const PROJECT_ID                   = process.env.APPWRITE_PROJECT_ID;
 const API_KEY                      = process.env.APPWRITE_API_KEY;
 const DATABASE_ID                  = process.env.APPWRITE_DATABASE_ID;
 const ACCEPTED_EVENT_COLLECTION_ID = process.env.APPWRITE_ACCEPTED_EVENT_COLLECTION_ID;
+const VIP_USERS_COLLECTION_ID      = process.env.APPWRITE_VIP_USERS_COLLECTION_ID;
 const DISCORD_BOT_TOKEN            = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID             = process.env.DISCORD_GUILD_ID;
 const DISCORD_VIP_ROLE_ID          = process.env.DISCORD_VIP_ROLE_ID;
@@ -98,48 +99,70 @@ module.exports = async function (context) {
     const databases = new Databases(client);
     const users = new Users(client);
 
+    if (VIP_USERS_COLLECTION_ID) {
+      const existingVip = await databases.listDocuments(
+        DATABASE_ID,
+        VIP_USERS_COLLECTION_ID,
+        [Query.equal("discordId", vipCheck.discordId), Query.limit(1)]
+      );
+      if (existingVip.total > 0) {
+        return res.json({
+          success: false,
+          error: "You have already registered as a VIP. Contact an admin to change your IGN.",
+        }, 409);
+      }
+    }
+
     const userDoc = await users.get(userId);
     const currentLabels = userDoc.labels || [];
     if (!currentLabels.includes("undergroundEventAccepted")) {
       await users.updateLabels(userId, [...currentLabels, "undergroundEventAccepted"]);
     }
 
-    const existing = await databases.listDocuments(
+    const now = new Date().toISOString();
+
+    if (VIP_USERS_COLLECTION_ID) {
+      await databases.createDocument(
+        DATABASE_ID,
+        VIP_USERS_COLLECTION_ID,
+        "unique()",
+        {
+          userId,
+          discordId: vipCheck.discordId || "",
+          discordUsername: vipCheck.discordUsername || userDoc.name || "",
+          minecraftIGN: ign,
+        }
+      );
+    }
+
+    const existingAccepted = await databases.listDocuments(
       DATABASE_ID,
       ACCEPTED_EVENT_COLLECTION_ID,
       [Query.equal("userId", userId), Query.limit(1)]
     );
 
-    if (existing.total > 0) {
-      return res.json({
-        success: true,
-        alreadyAccepted: true,
-        discordUsername: vipCheck.discordUsername,
-        minecraftIGN: existing.documents[0].minecraftIGN,
-      });
+    if (existingAccepted.total === 0) {
+      await databases.createDocument(
+        DATABASE_ID,
+        ACCEPTED_EVENT_COLLECTION_ID,
+        "unique()",
+        {
+          userId,
+          discordUsername: vipCheck.discordUsername || userDoc.name || "",
+          discordId: vipCheck.discordId || "",
+          minecraftIGN: ign,
+          rating: 100,
+          assignedAt: now,
+          assignedBy: "vip",
+          dmSent: false,
+        }
+      );
     }
 
-    await databases.createDocument(
-      DATABASE_ID,
-      ACCEPTED_EVENT_COLLECTION_ID,
-      "unique()",
-      {
-        userId,
-        discordUsername: vipCheck.discordUsername || userDoc.name || "",
-        discordId: vipCheck.discordId || "",
-        minecraftIGN: ign,
-        rating: 100,
-        assignedAt: new Date().toISOString(),
-        assignedBy: "vip",
-        dmSent: false,
-      }
-    );
-
-    log(`VIP user ${vipCheck.discordUsername} (IGN: ${ign}) added to acceptedEvent`);
+    log(`VIP user ${vipCheck.discordUsername} (IGN: ${ign}) registered`);
 
     return res.json({
       success: true,
-      alreadyAccepted: false,
       discordUsername: vipCheck.discordUsername,
       discordId: vipCheck.discordId,
       minecraftIGN: ign,
