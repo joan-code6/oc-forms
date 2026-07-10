@@ -432,10 +432,28 @@ module.exports = async function (context) {
     } catch {
       return res.json({ success: false, error: "Invalid JSON payload." }, 400);
     }
-    if (body.action === "migrate") {
+    if (body.action === "migrate" || body.action === "refresh-list") {
+      const client = getServerClient();
+      const databases = new Databases(client);
+
+      if (body.action === "refresh-list") {
+        try {
+          const embedState = await getEmbedState(databases);
+          if (!embedState || !embedState.channelId) {
+            return res.json({ success: false, error: "No accepted list configured." });
+          }
+          await deleteMessagesInChannel(embedState.channelId, embedState.messageIds, log);
+          const acceptedUsers = await getAcceptedUsers(databases);
+          await postAcceptedListMessages(embedState.channelId, acceptedUsers, databases, embedState.documentId, false, log);
+          log(`Accepted list refreshed (API key), ${acceptedUsers.length} users`);
+          return res.json({ success: true, userCount: acceptedUsers.length });
+        } catch (e) {
+          try { error("Refresh failed:", String(e?.message || e)); } catch (_) {}
+          return res.json({ success: false, error: "Refresh failed.", detail: String(e?.message || e) }, 500);
+        }
+      }
+
       try {
-        const client = getServerClient();
-        const databases = new Databases(client);
         let allDocs = [];
         let offset = 0;
         const pageSize = 1000;
